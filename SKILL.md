@@ -17,13 +17,19 @@ Workflow estruturado de 6 etapas para construir projetos com IA sem vibe coding.
 ## Fluxo completo
 
 ```
-/discover           → brief.md  (opcional — brainstorming guiado)
-/spec [new|feature] → Spec.md   → /clear
-/break              → issues/   → /clear
-/plan [issue]       → issue enriquecida → /clear
-/execute [issue]    → branch isolada → verifica → propõe merge
+/discover           → brief.md              (opcional — brainstorming guiado)
+/spec [new|feature] → Spec.md               → Constitution.md (só em new) → /clear
+/break              → PRD.md + issues/      → /clear
+/plan [issue]       → issue enriquecida     → /clear
+/execute [issue]    → branch isolada → verifica → atualiza PRD.md → propõe merge
 /build [issue]      → atalho: plan + execute automático
 ```
+
+**Artefatos persistentes:**
+- `brief.md` — ideia inicial em linguagem estruturada
+- `Constitution.md` — princípios não negociáveis do projeto (stack, estilo, arquitetura, segurança)
+- `Spec.md` — requisitos funcionais detalhados
+- `PRD.md` — estado vivo do produto: o que foi planejado, o que está em progresso, o que foi entregue
 
 Detecte o modo pelo argumento recebido (`$ARGUMENTS`). Se não houver argumento, pergunte qual etapa o usuário quer executar e explique o fluxo acima.
 
@@ -73,14 +79,25 @@ Leia `references/spec-template.md` para o formato. Gere `Spec.md` na raiz com:
 
 Para `/spec feature`: inclua em cada item qual código existente será reutilizado ou modificado.
 
+**Passo 4 — Gerar Constitution.md** (apenas em `/spec new`)
+Gere `Constitution.md` na raiz com os princípios não negociáveis do projeto:
+- **Stack** — linguagens, frameworks e bibliotecas obrigatórias
+- **Arquitetura** — padrões estruturais (ex: feature-based, monorepo, serverless)
+- **Estilo de código** — convenções de nomenclatura, formatação, organização de arquivos
+- **Segurança** — regras inegociáveis (ex: nunca expor secrets, sempre validar inputs no servidor)
+- **Performance** — limites aceitáveis (ex: bundle size, tempo de resposta)
+- **Qualidade** — cobertura mínima de testes, lint obrigatório antes de merge
+
+> A Constitution.md deve ser lida no início de todos os modos subsequentes (`/break`, `/plan`, `/execute`). Ela define o que nunca pode ser violado.
+
 **Ao final:** exiba um resumo da spec e instrua:
-> "Spec gerada em `Spec.md`. Faça `/clear` para limpar o contexto e inicie nova conversa com `/project-maker break`."
+> "Spec e Constitution geradas. Faça `/clear` para limpar o contexto e inicie nova conversa com `/project-maker break`."
 
 ---
 
 ## Modo: /break
 
-**Pré-requisito:** `Spec.md` deve existir na raiz.
+**Pré-requisito:** `Spec.md` deve existir na raiz. Se `Constitution.md` existir, leia-o primeiro.
 
 Leia a Spec.md completa. Leia `references/issue-template.md` para o formato de issue.
 
@@ -92,14 +109,38 @@ Uma issue por comportamento da Spec. Cada issue torna um prototype funcional: co
 
 **Formato de nome de arquivo:** `[numero]-[slug-do-titulo].md` (ex: `01-pagina-login.md`, `05-submit-form-cadastro.md`)
 
+**Passo 3 — Gerar PRD.md**
+Gere `PRD.md` na raiz como documento vivo do produto. Formato:
+
+```markdown
+# PRD — [Nome do Projeto]
+_Última atualização: [data]_
+
+## Visão geral
+[2-3 linhas do que o produto é e para quem]
+
+## Épicos
+### [Nome do épico]
+| Issue | Título | Status |
+|-------|--------|--------|
+| prototype/01 | [título] | 🔲 pendente |
+| functional/05 | [título] | 🔲 pendente |
+```
+
+Status possíveis: `🔲 pendente` · `🔄 em progresso` · `✅ entregue`
+
+> O PRD.md é atualizado automaticamente a cada `/execute` concluído.
+
 **Ao final:** liste todas as issues criadas em dois grupos (prototype / functional) e instrua:
-> "Issues geradas em `issues/`. Faça `/clear` e inicie nova conversa com `/project-maker plan issues/prototype/01-[nome].md` para começar pelo primeiro prototype."
+> "Issues e PRD gerados. Faça `/clear` e inicie nova conversa com `/project-maker plan issues/prototype/01-[nome].md` para começar pelo primeiro prototype."
 
 ---
 
 ## Modo: /plan
 
 **Argumento:** caminho ou nome da issue (ex: `issues/prototype/01-pagina-login.md`)
+
+Se `Constitution.md` existir na raiz, leia-o antes de qualquer coisa — ele define restrições que devem ser respeitadas no plano.
 
 Leia a issue completa.
 
@@ -133,6 +174,8 @@ Salve sobrescrevendo o arquivo da issue original.
 
 **Argumento:** caminho da issue enriquecida
 
+Se `Constitution.md` existir na raiz, leia-o antes de qualquer coisa — ele define restrições que devem ser respeitadas na implementação.
+
 Leia a issue completa. Verifique se está enriquecida (tem seção "Arquivos a criar/modificar"). Se não estiver, instrua a rodar `/plan` primeiro.
 
 **Passo 1 — Branch isolada**
@@ -159,7 +202,10 @@ Após implementação, use o agente `code-reviewer` (`~/.claude/plugins/marketpl
 **Passo 4 — Verificação**
 Execute os comandos de verificação da issue (testes, lint, typecheck). Corrija falhas antes de prosseguir.
 
-**Passo 5 — Propor merge**
+**Passo 5 — Atualizar PRD.md**
+Se `PRD.md` existir na raiz, atualize o status da issue concluída de `🔲 pendente` para `✅ entregue` e atualize a data de "Última atualização".
+
+**Passo 6 — Propor merge**
 Mostre o diff (`git diff main`) e pergunte ao usuário:
 - Se aprovar: instrua `git checkout main && git merge issue/[slug]`
 - Se rejeitar: liste as pendências e aguarde instruções
@@ -184,3 +230,10 @@ Atalho que executa `/plan` seguido de `/execute` com transição de contexto ger
 - `references/spec-template.md` — formato do Spec.md (leia no /spec ao gerar)
 - `references/issue-template.md` — formato de issues (leia no /break ao gerar)
 - `references/agents/` — instruções dos agentes especializados (leia no /execute conforme necessário)
+
+**Artefatos gerados no projeto (não são templates):**
+- `brief.md` — gerado no /discover
+- `Constitution.md` — gerado no /spec new
+- `Spec.md` — gerado no /spec
+- `PRD.md` — gerado no /break, atualizado no /execute
+- `issues/` — gerado no /break
