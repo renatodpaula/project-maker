@@ -1,5 +1,8 @@
 ---
 name: project-maker
+author: Renato de Paula Cardoso <renato@renatodpaula.com.br>
+homepage: https://github.com/renatodpaula/project-maker
+license: MIT
 description: |
   Workflow Spec-Driven Development para criar projetos ou adicionar features com IA de forma estruturada.
   Use este skill quando o usuário quiser organizar uma ideia de projeto, fazer brainstorming, criar um
