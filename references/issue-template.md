@@ -67,10 +67,49 @@
 
 ---
 
-## Verificação
-> Preenchido pelo /plan com os comandos reais do projeto
+## Done when
+> Critérios mecanicamente verificáveis. Nenhum item abstrato ("deve funcionar bem").
+> Preenchido pelo /plan a partir dos requisitos EARS da Spec.md.
 
-- [ ] Testes: `[ex: bun test, npm test, pnpm test]`
-- [ ] Tipos: `[ex: tsc --noEmit, bun run typecheck]`
-- [ ] Lint: `[ex: bun run lint, eslint .]`
-- [ ] Comportamento visual/funcional conforme spec
+- [ ] [comportamento observável 1 — ex: "usuário consegue submeter o form com credenciais válidas e é redirecionado em <2s"]
+- [ ] [arquivo X existe com implementação real, não stub]
+- [ ] [acceptance criteria REQ-N da Spec atendido]
+
+---
+
+## Tests
+> Caminhos dos testes que cobrem esta issue. Preenchido pelo /plan.
+
+- **unit**: `path/to/unit.test.ts`
+- **integration**: `path/to/integration.test.ts`
+- **e2e** (opcional): `path/to/e2e.spec.ts`
+
+---
+
+## Gate
+> Comando shell que retorna 0 para "done", !=0 para "not done". Sensor 0/1 — o agente NUNCA declara a issue como concluída sem rodar isto e obter exit code 0.
+> Preenchido pelo /plan com os comandos reais do projeto.
+
+```bash
+[ex: npm run lint && npm run test -- path/to/test && npm run typecheck]
+```
+
+**Regra:** se o Gate falhar 3x seguidas, pare, marque como blocker em `STATE.md` e peça intervenção.
+
+---
+
+## Summary
+> Preenchido pelo /execute ao final. Input obrigatório para o validator (PR 2).
+
+- **Status**: Complete | Blocked | Partial
+- **Files changed**: [lista dos arquivos criados/modificados]
+- **Gate check result**: pass/fail + contagens de teste
+- **Issues encontradas**: [o que foi difícil, o que quase falhou]
+
+### Spec Deviations
+> Qualquer coisa feita DIFERENTE da spec/plan original. Preencher mesmo se parecer pequeno.
+> Se nada divergiu, escrever `none`.
+
+- **O que foi feito diferente**: [ex: usou lib X ao invés de Y que estava na spec]
+- **Por quê**: [razão técnica]
+- **Impacto**: [afeta outras issues? atualiza data-model? muda contracts?]
