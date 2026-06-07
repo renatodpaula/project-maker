@@ -2,6 +2,7 @@
 name: project-maker
 author: Renato de Paula Cardoso <renato@renatodpaula.com.br>
 homepage: https://github.com/renatodpaula/project-maker
+instagram: https://instagram.com/renatodpaula.ai
 license: MIT
 description: |
   Workflow Spec-Driven Development para criar projetos ou adicionar features com IA de forma estruturada.
@@ -10,7 +11,8 @@ description: |
   issue, ou executar uma implementação. Sempre use antes de começar qualquer projeto ou feature nova.
   Triggers explícitos: "criar projeto", "nova feature", "quero construir algo", "organizar minha ideia",
   "brainstorming de projeto", "planejar implementação", "quebrar em issues", "implementar issue",
-  "/discover", "/init", "/spec", "/break", "/plan", "/execute", "/build".
+  "validar feature", "testar feature", "revisar segurança", "criar PR", "abrir pull request",
+  "/discover", "/init", "/spec", "/break", "/plan", "/execute", "/verify", "/secure", "/ship", "/build".
 ---
 
 # Project Maker
@@ -27,6 +29,15 @@ Workflow estruturado de Spec-Driven Development para construir projetos com IA s
 | **Medium** (`--feature`) | Feature clara, <10 issues, 1 sprint | — | ⚠️ | ✅ breve | ⚠️ inline | ✅ | ✅ sprint único |
 | **Large** (`--feature-large`) | Multi-componente, 2-5 sprints | — | ✅ | ✅ completo | ✅ | ✅ | ✅ dual-agent |
 | **Complex** (`--epic`) | Ambiguidade, domínio novo | ✅ | ✅ | ✅ + discuss | ✅ + research | ✅ | ✅ + UAT |
+
+**Etapas de fechamento** (após o execute, quando há entrega real):
+
+| Escopo | Verify | Secure | Ship |
+|---|:-:|:-:|:-:|
+| **Small** (`--quick`) | ⚠️ se user-facing | ⚠️ se toca auth/dados/input | ⚠️ se há remote |
+| **Medium** (`--feature`) | ✅ se user-facing | ✅ | ✅ |
+| **Large** (`--feature-large`) | ✅ | ✅ | ✅ |
+| **Complex** (`--epic`) | ✅ | ✅ | ✅ |
 
 **Legenda:** ✅ obrigatório · ⚠️ condicional/inline · — pulado
 
@@ -53,13 +64,19 @@ Workflow estruturado de Spec-Driven Development para construir projetos com IA s
 /break               → research.md + data-model.md + contracts/
                         + sprints/ + issues/ + PRD.md           (Large+)
 /plan [issue|sprint] → issue enriquecida                       (todos)
-/execute [sprint]    → orquestra: implementer → validator
-                        → reassess → milestone gate
-                        → UAT → PRD                             (todos)
+/execute [sprint]    → orquestra: waves → implementer → validator
+                        → reassess → milestone gate → PRD        (todos)
+/verify [sprint]     → UAT resumível + cold-start smoke +
+                        loop diagnose→fix→re-verify → uat.md     (user-facing)
+/secure [sprint]     → gate de segurança (delega security-review)
+                        → SECURITY.md                            (auth/dados/input)
+/ship [sprint]       → preflight → push → PR com body rico       (quando há remote)
 /build [issue]       → atalho: plan + execute (issue isolada)   (Small/Medium)
 /pause               → snapshot em STATE.md para próxima sessão (qualquer hora)
 /resume              → retoma a partir de STATE.md              (qualquer hora)
 ```
+
+**Loop de fechamento (após o sprint passar no milestone gate):** `/verify` (se user-facing) → `/secure` (se toca segurança) → `/ship`. O `/ship` só cria o PR se o milestone gate passou, o `/verify` não tem gaps abertos e o `/secure` não tem ameaças abertas.
 
 **Hierarquia de trabalho (regra de ferro):**
 
@@ -99,9 +116,10 @@ Feature/sprint/issue:
 - `research.md` — pesquisa técnica pré-implementação
 - `data-model.md` — entidades, schemas, relacionamentos
 - `contracts/` — especificações de API (endpoints, payloads, responses)
-- `sprints/` — sprints com Goal, Success Criteria, Issues, Reassess Notes
+- `sprints/` — sprints com Goal, Success Criteria, Issues, Waves, Reassess Notes
 - `issues/` — issues de execução geradas pelo /break
-- `uat.md` — script de UAT interativo (condicional, gerado no /execute)
+- `uat.md` — script de UAT resumível (condicional, gerado no /verify ou /execute)
+- `SECURITY.md` — resultado do gate de segurança (condicional, gerado no /secure)
 
 Detecte o modo pelo argumento recebido (`$ARGUMENTS`). Se não houver argumento, pergunte qual etapa o usuário quer executar, a escala do problema, e explique o fluxo acima.
 
@@ -255,6 +273,40 @@ Se durante a implementação você fizer qualquer coisa diferente do que está n
 - Impacto (afeta outras issues? contracts? data-model?)
 
 Se nada divergiu, escrever `none` explicitamente. Este campo vira input obrigatório do validator (PR 2) e ajuda o reassess phase a atualizar o plano à luz do que foi realmente aprendido.
+
+### Package Legitimacy Gate (defesa anti-slopsquatting)
+
+Modelos **alucinam nomes de pacote** — pesquisa de 2025 documenta ~20% das referências de pacote geradas por IA como nomes que não existem, e atacantes registram esses nomes alucinados de propósito (*slopsquatting*). Um nome alucinado que passa no `npm view` *parece* legítimo: o registry só prova que alguém registrou o nome, não que o pacote faz o que a IA disse.
+
+**Toda recomendação de pacote externo (npm/pip/cargo/etc.) passa por tags de legitimidade.** O `/break` gera a tabela `## Package Legitimacy Audit` em `research.md`; o `/execute` respeita as tags antes de instalar.
+
+| Tag | Significa | Ação |
+|---|---|---|
+| `[OK]` | Verificado direto no registry: existe, downloads consistentes, repo-fonte real, mantido | Instala normalmente |
+| `[SUS]` | Suspeito: recém-registrado, poucos downloads, sem repo, nome colado a um pacote popular | **Checkpoint humano** antes de instalar — link do registry + o que checar |
+| `[ASSUMED]` | Veio de WebSearch, não verificado direto no registry | **Checkpoint humano** — `npm view`/`pip index`/link e confirmação |
+| `[SLOP]` | Não existe / alta confiança de alucinação ou registro malicioso | **Proibido.** Não instala, não substitui em silêncio |
+
+**Regras de ferro:**
+- Verificação preferida: `npm view <pkg>` / `pip index versions <pkg>` / página `npmjs.com|pypi.org|crates.io`.
+- Pacote de WebSearch é **sempre** `[ASSUMED]`, mesmo que `npm view` funcione — registro ≠ legitimidade.
+- Em `[SLOP]`: pare e reporte. **Nunca** invente outro nome de pacote para "resolver" — isso só troca uma alucinação por outra. Peça direção humana.
+- Sem ferramenta de verificação disponível? Trate **todo** pacote como `[ASSUMED]` (checkpoint em cada install). Mais estrito de propósito.
+
+### Nyquist — todo critério tem um sensor
+
+Todo critério de `Done when` precisa de um **teste automático que o prova**. Se o teste ainda não existe, criar o teste é a **primeira sub-task** (Wave 0 da issue), antes de implementar. Critério sem sensor não é verificável — e "não verificável" colapsa em "fabricável".
+
+- O campo `Tests` da issue lista os sensores. Sensor faltante = `MISSING — criar primeiro`.
+- O campo `Gate` (sensor 0/1) roda esses testes. Gate sem teste real por trás = gate teatral.
+- Automation-first: se o agente **pode** verificar via CLI/API, **deve** — checkpoint humano confirma *depois* da automação, nunca a substitui.
+
+### Parallel Write Safety (waves)
+
+Quando issues `[P]` rodam em paralelo na mesma wave (ver `/execute`):
+- **Só o orquestrador escreve** em `STATE.md`, `PRD.md`, `DECISIONS.md`, `KNOWLEDGE.md`. Sub-agents **retornam** o que mudou; o orquestrador serializa as escritas. Sub-agent nunca edita living docs direto (evita race read-modify-write).
+- Issues da mesma wave **não podem tocar os mesmos arquivos de código**. Se colidem, vão para waves diferentes ou viram uma issue só.
+- Cada sub-agent commita só os arquivos da sua issue.
 
 ---
 
@@ -436,6 +488,20 @@ Antes de quebrar em issues, gere `research.md` com:
 
 Use WebSearch/WebFetch para pesquisar documentação e compatibilidade quando necessário.
 
+**Package Legitimacy Audit (obrigatório quando a spec exige instalar pacotes).** Para cada pacote candidato, gere a tabela abaixo em `research.md` seguindo a regra **Package Legitimacy Gate** das Harness Rules. Verifique cada um (`npm view` / `pip index versions` / página do registry) antes de taguear:
+
+```markdown
+## Package Legitimacy Audit
+
+| Pacote | Versão | Fonte da recomendação | Verificação | Tag |
+|--------|--------|----------------------|-------------|-----|
+| zod | ^3.x | codebase + npm view | npmjs.com/package/zod, 30M downloads/sem, repo ativo | [OK] |
+| some-lib | ^1.0 | WebSearch | npm view OK mas não verificado direto | [ASSUMED] |
+| made-up-pkg | — | sugestão do modelo | npm view: 404 | [SLOP] |
+```
+
+Sem esta tabela, o `/execute` **bloqueia** qualquer task de install. Pacote `[SLOP]` é proibido — não invente substituto, reporte.
+
 **Passo 2 — data-model.md**
 Gere `data-model.md` com:
 - Entidades do domínio e seus atributos (com tipos)
@@ -487,6 +553,11 @@ Exemplo de Success Criterion bom:
 - ❌ "autenticação funciona bem"
 
 Nomeie os sprints com numeração + slug: `SPRINT-001-auth.md`, `SPRINT-002-dashboard.md`.
+
+**Wave analysis (dentro de cada sprint).** Antes de fechar o sprint.md, derive os grupos de execução a partir dos `Depends on` das issues e preencha a seção `## Waves` (ver `references/sprint-template.md`):
+- Issues sem dependências → Wave 1 (rodam em paralelo).
+- Issues que dependem só da Wave 1 → Wave 2. E assim por diante (DAG → waves).
+- **Verificação de colisão:** issues na mesma wave não podem tocar os mesmos arquivos. Se duas issues `[P]` colidem em arquivo, separe em waves diferentes ou funda numa issue. Isso é o que torna o paralelismo do `/execute` seguro.
 
 **Passo 7 — PRD.md**
 Gere `PRD.md` na raiz como documento vivo do produto, organizado por sprint:
@@ -566,15 +637,18 @@ Salve sobrescrevendo o arquivo da issue original.
 /execute SPRINT-NNN
   │
   ├─ Session Loading (STATE, DECISIONS, KNOWLEDGE, Constitution, steering)
-  ├─ Para cada issue do sprint (respeitando Depends on e [P]):
-  │    ├─ spawn implementer (sub-agent isolado)
-  │    ├─ spawn validator (sub-agent separado, lê issue + diff + gate result)
-  │    ├─ se fail e <3 tentativas → re-dispatch implementer com gaps do validator
-  │    ├─ se pass → fecha issue, atualiza PRD + STATE
-  │    └─ se 3 fails → marca blocker, pula
+  ├─ Para cada WAVE do sprint (na ordem do DAG; ver ## Waves do sprint.md):
+  │    ├─ Issues da wave rodam em PARALELO (1 sub-agent por issue [P]):
+  │    │    ├─ spawn implementer (sub-agent isolado)
+  │    │    ├─ spawn validator (sub-agent separado, lê issue + diff + gate result)
+  │    │    ├─ se fail e <3 tentativas → re-dispatch implementer com gaps do validator
+  │    │    ├─ se pass → fecha issue
+  │    │    └─ se 3 fails → marca blocker, pula
+  │    └─ Fim da wave: ORQUESTRADOR serializa escritas em PRD/STATE/DECISIONS/KNOWLEDGE
   ├─ Reassess Phase (4 perguntas, atualiza PRD/DECISIONS/KNOWLEDGE)
   ├─ Milestone Validation Gate (todos os Success Criteria verificados)
   └─ Fecha sprint como done OU pending-review
+       → handoff: /verify (se user-facing) → /secure → /ship
 ```
 
 ### Passo 0 — Session Loading (Harness Rules)
@@ -598,9 +672,13 @@ git checkout -b sprint/[slug-do-sprint]
 
 Todas as issues do sprint são commitadas nesta mesma branch (1 commit por issue), fechando o sprint com um merge único em main ao final.
 
-### Passo 2 — Loop de implementação por issue
+### Passo 2 — Loop de implementação por wave
 
-Para cada issue do sprint, na ordem correta (respeitando `Depends on`; issues `[P]` podem rodar em paralelo):
+Leia a seção `## Waves` do sprint.md. Execute **wave por wave**, na ordem do DAG. Dentro de uma wave, dispare um sub-agent por issue **em paralelo** (issues `[P]` que não colidem em arquivo). A wave seguinte só começa quando todas as issues da anterior fecharam.
+
+> **Parallel Write Safety:** dentro da wave, sub-agents implementam e retornam resultado, mas **só o orquestrador** escreve em STATE/PRD/DECISIONS/KNOWLEDGE, serializando ao fim da wave (ver Harness Rules). Sub-agent nunca edita living doc direto.
+
+Para cada issue da wave:
 
 **2.1 — Phase Gates constitucionais** (checagem rápida antes de delegar):
 - Respeita stack do Constitution.md?
@@ -608,6 +686,8 @@ Para cada issue do sprint, na ordem correta (respeitando `Depends on`; issues `[
 - Sem features especulativas?
 - Inputs validados no servidor, sem secrets expostos?
 - Testes serão escritos junto?
+- **Nyquist:** todo `Done when` da issue tem um sensor em `Tests`? Se algum está `MISSING`, a primeira sub-task do implementer é criar o teste (scaffold) antes de implementar.
+- **Package Legitimacy:** a issue instala pacote? Consulte `## Package Legitimacy Audit` do `research.md`. `[OK]` instala; `[SUS]`/`[ASSUMED]` exigem **checkpoint humano** (mostre o link do registry e confirme antes); `[SLOP]` é **proibido** — pare e reporte, nunca troque o nome em silêncio. Se não há tabela e a issue instala pacote, **bloqueie** e instrua rodar/atualizar o `/break`.
 
 Se algum gate falhar, documente a exceção no Summary da issue antes de prosseguir.
 
@@ -714,26 +794,27 @@ Dispare UAT interativo **apenas** se o sprint entrega uma feature user-facing co
 - Sprint é um bugfix pontual
 - Escopo é `--quick`
 
-**Fluxo:**
-1. Gere `uat.md` na raiz do sprint (ou ao lado da issue, se `--quick`) a partir de `references/uat-template.md`
-2. Preencha Setup, Test Steps (caminho feliz + edge cases + visual polish) baseado nos `Done when` das issues do sprint
-3. Apresente ao usuário e peça para executar
-4. Registre o resultado no próprio `uat.md`
-5. Se `pass` → prossiga para Passo 5
-6. Se `fail` ou `partial` → registre os steps falhados em `STATE.md → Blockers`, mantenha sprint como `⏸ pending-review`, liste action items
+**Fluxo:** dispare o modo `/verify` (ver `## Modo: /verify`) passando o sprint atual. Ele gera o `uat.md` resumível, injeta o cold-start smoke test quando aplicável, conduz o teste um a um, e — se houver gaps — roda o loop diagnose→fix→re-verify. Em `--quick`, gere o `uat.md` ao lado da issue.
+
+- Se `/verify` retorna **sem gaps** → prossiga para Passo 5.
+- Se retorna **com gaps** → o `/verify` já criou as issues de fix; mantenha o sprint `⏸ pending-review` até as fixes passarem no re-verify.
 
 O UAT **não substitui** o Milestone Gate — é complementar, só para features onde a experiência importa.
 
-### Passo 5 — Propor merge do sprint
+### Passo 5 — Fechar sprint e entregar
 
 Se o Milestone Gate passou:
 
 - Marque sprint como `✅ done` em PRD.md e sprint.md (preencha `Fechado em`)
-- Mostre `git diff main` consolidado do sprint
-- Proponha: `git checkout main && git merge sprint/[slug]`
-- Aguarde confirmação do usuário
+- Atualize STATE.md (current → próximo sprint, blockers limpos)
+- Encaminhe para o **loop de fechamento**, na ordem aplicável:
+  1. `/verify [sprint]` — se o sprint é user-facing (já disparado no Passo 4.5; se pulou lá, é aqui)
+  2. `/secure [sprint]` — se o sprint tocou auth, dados, input externo ou superfície de rede
+  3. `/ship [sprint]` — push + PR com body rico (quando há remote configurado)
 
-Se rejeitado pelo usuário, liste pendências, registre em STATE.md → Blockers, marque sprint como `⏸ pending-review` e aguarde instruções.
+Se **não há remote** (projeto local), o `/ship` cai no fallback de merge local: mostre `git diff main`, proponha `git checkout main && git merge sprint/[slug]`, aguarde confirmação.
+
+Se o Milestone Gate **não** passou: liste pendências, registre em STATE.md → Blockers, marque sprint como `⏸ pending-review` e aguarde instruções. Não encaminhe para ship.
 
 ---
 
@@ -747,6 +828,113 @@ Quando a escala for `--quick` (bug fix, mudança pequena), `/execute` aceita uma
 
 ---
 
+## Modo: /verify
+
+**Argumento:** caminho de um sprint (`sprints/SPRINT-NNN-[slug].md`) ou de uma issue em `--quick`.
+
+UAT conduzido — confirma que o que foi construído **funciona da perspectiva do usuário**, no que o validator automático (lógica) não alcança (experiência). Disparado no Passo 4.5 do `/execute` ou manualmente após uma entrega user-facing.
+
+**Filosofia:** *mostre o esperado, pergunte se a realidade bate.* Um teste por vez, resposta em texto livre. Resposta vazia / "ok" / "sim" / "next" = pass. Qualquer outra coisa = issue, com severidade **inferida** da linguagem (nunca pergunte "quão grave?"). Ver `references/uat-template.md`.
+
+### Passo 0 — Session Loading + checar sessão ativa
+- Leia STATE.md, Constitution.md, steering relevante.
+- Procure `uat.md` com `status: testing | partial` para o sprint. Se existir, **retome** do primeiro teste `pending` (o frontmatter sobrevive a `/clear`). Senão, crie novo.
+
+### Passo 1 — Extrair testes
+- Leia os `Summary` das issues do sprint e os `Done when`. Extraia **deliverables observáveis pelo usuário** (não refactors/tipos internos).
+- Cada teste = uma ação + um resultado esperado específico.
+
+**Cold-start smoke test (injeção automática).** Se algum arquivo tocado pelo sprint casa com `server.*`, `app.*`, `index.*`, `main.*`, `migrations/*`, `seed*`, `db/*`, `docker-compose*`, `Dockerfile*` → **prepend** o teste de boot frio (Test 0 do template): matar serviço, limpar estado efêmero, subir do zero, query primária retorna dado vivo. Pega bug que só aparece em estado frio e passa em estado quente.
+
+### Passo 2 — Conduzir (um por vez)
+- Gere `uat.md` a partir do template. Apresente o teste atual (esperado), aguarde resposta.
+- Processe: pass / issue (com severidade inferida + append no `## Gaps` YAML) / skipped / blocked (pré-requisito — não vira gap).
+- Escreva no arquivo: ao achar issue, a cada 5 passes, e ao completar. Atualize `Current Test` e `Summary`.
+
+### Passo 3 — Se houver gaps: loop diagnose → fix → re-verify
+1. **Diagnose:** para cada gap, dispare um sub-agent que investiga a root cause (lê o diff do sprint + o gap). Preencha `root_cause` no YAML.
+2. **Fix issue:** crie uma issue de fix em `issues/functional/` (gap_closure) por root cause, com `Done when` derivado do `truth` do gap e `Gate` real. Linke em `fix_issue`.
+3. **Execute:** instrua `/execute` nas issues de fix (`--quick` se isolado, ou nova mini-wave no sprint).
+4. **Re-verify:** re-rode só os testes que tinham falhado. Repita no máximo o que o `Stuck Detection` permite (não fique em loop infinito).
+
+### Passo 4 — Fechar
+- Sem gaps abertos → `status: complete`, sprint pode seguir para `/secure`/`/ship`.
+- Com gaps abertos → registre em STATE.md → Blockers, sprint fica `⏸ pending-review`.
+
+**Quando NÃO rodar:** sprint só backend/migrations/refactor interno, bugfix pontual, `--quick` sem superfície de usuário. UAT **não substitui** o Milestone Gate — é complementar.
+
+---
+
+## Modo: /secure
+
+**Argumento:** caminho de um sprint (ou issue em `--quick`).
+
+Gate de segurança escopado ao **diff do sprint**, não ao codebase inteiro. Roda antes do `/ship`. Gera `SECURITY.md` (ver `references/security-template.md`). É o equivalente ao `secure-phase` do gsd: bloqueia a entrega se houver ameaça aberta.
+
+### Passo 1 — Escopo
+```bash
+git diff main...sprint/[slug] --stat
+```
+Carregue as regras de **Segurança da `Constitution.md`** e o `steering/CONCERNS.md` se o diff toca área flagged.
+
+### Passo 2 — Delegar ou checklist
+- **Se a skill `security-review` está instalada** (ver tabela Skill Integrations): delegue a ela a revisão do diff da branch. Ela é a fonte primária do veredito. Recomendação de instalação aparece no máx. 1x/sessão.
+- **Senão (fallback):** rode o checklist embutido do `references/security-template.md` — input/injection, authn/authz/IDOR, secrets, dependências (cruza com o Package Legitimacy Gate), superfície/erros — escopado ao que o diff mudou. Marque N/A o que o sprint não toca.
+
+### Passo 3 — Registrar
+- Cada violação vira linha no `## Threat Model` do SECURITY.md, com severidade e mitigação.
+- Preencha o frontmatter: `status` (`clean | threats_open | needs_human`) e `threats_open` (contagem).
+- Itens que exigem julgamento humano → `needs_human`, peça revisão explícita.
+
+### Passo 4 — Veredito
+- `clean` → libera o `/ship`.
+- `threats_open > 0` → **bloqueia o /ship**. Crie issues de fix (como no `/verify` Passo 3) ou registre em STATE.md → Blockers.
+
+**Quando rodar:** sempre que o sprint tocar auth, dados sensíveis, input externo, uploads, pagamentos, ou superfície de rede. Em `--quick`, só se a mudança toca uma dessas áreas.
+
+---
+
+## Modo: /ship
+
+**Argumento:** caminho de um sprint (ou `milestone vX.Y` ao fechar milestone).
+
+Ponte entre "trabalho completo localmente" e "PR aberto". Push da branch + PR com body rico montado dos artefatos. **Fecha o loop** spec → execute → verify → secure → ship. Ver `references/pr-body-template.md`.
+
+### Passo 1 — Preflight gate (bloqueia se qualquer item falhar)
+1. **Milestone Gate passou?** Sprint está `✅ done` no PRD.md? Senão → pare, rode `/execute` até fechar.
+2. **Verify sem gaps?** Se há `uat.md` para o sprint, `status: complete` e `## Gaps` vazio? Senão → rode `/verify`.
+3. **Secure limpo?** Se há `SECURITY.md`, `threats_open: 0`? Senão → rode `/secure` e resolva.
+4. **Working tree limpo?** `git status --short` vazio? Senão → peça commit ou stash.
+5. **Branch correta?** Está em `sprint/[slug]`, não em `main`? Senão → avise.
+6. **Remote + gh?** `git remote -v` tem origin E `gh auth status` ok? Se **não há remote** → caia no fallback de merge local (Passo 5b). Se há remote mas `gh` não autenticado → instrua `gh auth login` (sugira `! gh auth login`) e pare.
+
+### Passo 2 — Push
+```bash
+git push -u origin sprint/[slug]
+```
+
+### Passo 3 — Montar PR body
+Monte o corpo a partir dos artefatos seguindo `references/pr-body-template.md`: **Summary** (Goal do sprint + síntese dos Summary), **Changes** (por issue), **Requirements Addressed** (REQ-N → Spec.md), **Verification** (Milestone Gate + UAT), **Security** (se SECURITY.md existe), **Key Decisions** (DECISIONS.md do sprint). Nunca fabrique REQ/decisão — sintetize do disco; marque `[artefato ausente]` se faltar.
+
+### Passo 4 — Criar PR
+```bash
+# corpo num temp file evita limite de arg do shell
+gh pr create --title "Sprint NNN: [slug]" --body-file "$PR_BODY_FILE" --base main
+```
+Adicione `--draft` se o usuário pediu.
+
+### Passo 5 — Review opcional + tracking
+- Pergunte (AskUserQuestion): pular review / self-review (mostre `url/files`) / pedir review de alguém (`gh pr edit N --add-reviewer`). Se a skill `code-review` está disponível, ofereça rodá-la no diff.
+- Atualize STATE.md: `Status → Sprint NNN shipped — PR #N`.
+- Reporte número e URL do PR + próximos passos (revisar, mergear quando CI passar).
+
+### Passo 5b — Fallback sem remote
+Sem origin: mostre `git diff main` consolidado, proponha `git checkout main && git merge sprint/[slug]`, aguarde confirmação. Registre no STATE.md.
+
+**Confirmação:** push e abertura de PR são ações outward-facing — confirme com o usuário antes de criar o PR, a menos que ele já tenha autorizado explicitamente nesta sessão.
+
+---
+
 ## Modo: /build
 
 **Argumento:** caminho da issue
@@ -756,7 +944,8 @@ Atalho que executa `/plan` seguido de `/execute` com transição de contexto ger
 1. Execute o fluxo completo de `/plan` para a issue
 2. **Safety valve:** antes de prosseguir para `/execute`, liste os passos atômicos inline. Se a lista revelar **>5 passos** ou **dependências complexas entre arquivos**, PARE: o ciclo plan→execute não cabe em uma sessão. Instrua o usuário a rodar `/break` para subdividir a issue e abortar o `/build`.
 3. Se a lista inline tiver ≤5 passos, continue diretamente para `/execute` sem exigir `/clear` manual — resuma o contexto internamente antes de prosseguir
-4. `/build` também segue integralmente as Harness Rules: ler STATE.md no início, rodar Gate Check, registrar Spec Deviations, atualizar STATE.md no final
+4. `/build` também segue integralmente as Harness Rules: ler STATE.md no início, rodar Gate Check (com Nyquist + Package Legitimacy), registrar Spec Deviations, atualizar STATE.md no final
+5. Ao concluir: se a issue é user-facing, ofereça `/verify`; se tocou segurança, ofereça `/secure`; se há remote, ofereça `/ship` (ou merge local no fallback)
 
 ---
 
@@ -770,7 +959,7 @@ Encerra a sessão atual de forma explícita, deixando `STATE.md` em condições 
 1. Atualize `STATE.md → Current Session`:
    - `Last updated`: timestamp agora
    - `Active feature/issue`: path da issue/sprint em progresso
-   - `Phase`: fase atual (spec | break | plan | execute | review)
+   - `Phase`: fase atual (spec | break | plan | execute | verify | secure | ship | review)
    - `Next action`: 1 linha objetiva do próximo passo
    - `Files in progress`: lista de arquivos abertos/em edição
    - `Session handoff note`: 2-3 linhas explicando onde paramos e o que a próxima sessão precisa saber
@@ -814,7 +1003,9 @@ Retoma o trabalho a partir do `STATE.md` da última sessão. É a forma correta 
 - `references/context-template.md` — formato do context.md (leia no Discuss phase do /spec)
 - `references/sprint-template.md` — formato dos sprints (leia no /break ao gerar)
 - `references/issue-template.md` — formato de issues (leia no /break, com Done when / Tests / Gate / Summary)
-- `references/uat-template.md` — formato do uat.md (leia no /execute quando disparar UAT)
+- `references/uat-template.md` — formato do uat.md resumível (leia no /verify e no /execute Passo 4.5)
+- `references/security-template.md` — formato do SECURITY.md (leia no /secure ao gerar)
+- `references/pr-body-template.md` — formato do corpo do PR (leia no /ship ao montar o PR)
 - `references/state-template.md` — formato do STATE.md (leia no /init ao gerar)
 - `references/decisions-template.md` — formato do DECISIONS.md (leia no /init ao gerar)
 - `references/knowledge-template.md` — formato do KNOWLEDGE.md (leia no /init ao gerar)
@@ -836,7 +1027,9 @@ Retoma o trabalho a partir do `STATE.md` da última sessão. É a forma correta 
 - `research.md` — gerado no /break
 - `data-model.md` — gerado no /break
 - `contracts/` — gerado no /break
-- `sprints/` — gerado no /break, atualizado no /execute (reassess + milestone gate)
+- `research.md` — inclui `## Package Legitimacy Audit` quando a spec exige instalar pacotes
+- `sprints/` — gerado no /break (com `## Waves`), atualizado no /execute (reassess + milestone gate)
 - `issues/` — gerado no /break, enriquecido no /plan, fechado no /execute
-- `uat.md` — gerado no /execute quando UAT interativo é disparado
+- `uat.md` — gerado no /verify (ou /execute Passo 4.5); resumível, com cold-start smoke e gaps YAML
+- `SECURITY.md` — gerado no /secure; threat model + veredito que o /ship lê
 - `PRD.md` — gerado no /break, atualizado no /execute

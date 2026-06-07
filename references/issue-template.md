@@ -79,10 +79,12 @@
 
 ## Tests
 > Caminhos dos testes que cobrem esta issue. Preenchido pelo /plan.
+> **Regra Nyquist:** todo critério de `Done when` precisa de um sensor automático. Se o teste que prova um critério **ainda não existe**, marque `MISSING — criar primeiro` e a **primeira sub-task do /execute é criar esse teste** (scaffold) antes de implementar. Critério sem sensor = critério não verificável.
 
 - **unit**: `path/to/unit.test.ts`
 - **integration**: `path/to/integration.test.ts`
 - **e2e** (opcional): `path/to/e2e.spec.ts`
+- **MISSING**: [critério X não tem teste — Wave 0 da issue cria `path/to/novo.test.ts` antes de implementar]
 
 ---
 

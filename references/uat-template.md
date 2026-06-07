@@ -1,66 +1,101 @@
 # UAT — [Issue ou Sprint]
 
-> Script de User Acceptance Testing para features user-facing. Gerado ao fim do `/execute` quando a feature envolve interação visual/complexa e o validator automático não consegue cobrir 100% do comportamento.
-> Executado **pelo usuário**, não pelo agente. O agente registra o resultado.
+> Script de User Acceptance Testing para features user-facing. Gerado/atualizado pelo `/verify` (ou pelo Passo 4.5 do `/execute`) quando a feature envolve interação visual/complexa que o validator automático não cobre 100%.
+> Executado **pelo usuário**, registrado **pelo agente**. **Um teste por vez.** Filosofia: *"mostre o esperado, pergunte se a realidade bate"* — nunca pergunte severidade, infira da linguagem.
 
-_Gerado em: YYYY-MM-DD HH:MM_
-_Issue/Sprint: [path]_
-_Implements: REQ-X, REQ-Y_
+```yaml
+---
+status: testing | partial | complete
+scope: [path do sprint ou issue]
+implements: [REQ-X, REQ-Y]
+started: YYYY-MM-DD HH:MM
+updated: YYYY-MM-DD HH:MM
+---
+```
+
+> **Resumível:** o `status` no frontmatter sobrevive a `/clear`. Ao retomar, vá ao primeiro teste com `result: pending`. Escreva no arquivo quando: (1) achar um issue, (2) a cada 5 passes, (3) ao completar.
+
+---
+
+## Current Test
+
+> Sobrescrito a cada teste — mostra onde estamos. Em context reset, é daqui que o `/verify` retoma.
+
+```
+number: 1
+name: [nome do teste atual]
+expected: [o que o usuário deve observar]
+awaiting: user response
+```
 
 ---
 
 ## Setup
 
-> O que o usuário precisa fazer antes de começar a testar.
-
-1. Garantir que a branch `sprint/[slug]` está rodando localmente
-2. `npm run dev` (ou comando equivalente)
-3. Abrir [URL]
-4. [Qualquer setup adicional — seed de dados, login, etc.]
+1. Branch `sprint/[slug]` rodando localmente (`npm run dev` ou equivalente)
+2. Abrir [URL]
+3. [Seed de dados, login, etc.]
 
 ---
 
-## Test Steps
+## Tests
 
-### Caminho feliz
+> Cada teste = uma ação do usuário + resultado observável esperado. `result`: pending | pass | issue | skipped | blocked.
 
-| # | Ação | Resultado esperado | Resultado real | Status |
-|---|---|---|---|---|
-| 1 | [ex: clicar em "Login"] | [ex: modal abre com campos email/senha] | _(preenchido pelo usuário)_ | ⬜ |
-| 2 | [ex: preencher email válido + senha] | [ex: botão "Entrar" habilita] | | ⬜ |
-| 3 | [ex: clicar em "Entrar"] | [ex: redireciona para /dashboard em <2s] | | ⬜ |
+### 0. Cold Start Smoke Test
+> **Injetado automaticamente** quando o sprint tocou `server.*`, `app.*`, `index.*`, `main.*`, `migrations/*`, `seed*`, `db/*`, `docker-compose*`, `Dockerfile*`. Pega bugs que só aparecem em boot frio (race de startup, seed silencioso falhando, env faltando).
 
-### Edge cases
+expected: Mate o servidor/serviço. Limpe estado efêmero (DBs temp, caches, lockfiles). Suba a aplicação do zero. Boot sem erro, seed/migration completa, e uma query primária (health check, home, ou API básica) retorna dado vivo.
+result: pending
 
-| # | Ação | Resultado esperado | Resultado real | Status |
-|---|---|---|---|---|
-| 1 | [ex: submeter form com email inválido] | [ex: mensagem "email inválido" aparece inline] | | ⬜ |
-| 2 | [ex: senha errada 3x] | [ex: rate limit ativa, mostra mensagem] | | ⬜ |
+### 1. [Nome do teste]
+expected: [comportamento observável]
+result: pending
 
-### Visual polish
-
-| # | Verificação | Status |
-|---|---|---|
-| 1 | Layout responsivo em mobile (< 640px) | ⬜ |
-| 2 | Estados de loading visíveis | ⬜ |
-| 3 | Mensagens de erro legíveis | ⬜ |
-| 4 | Acessibilidade básica (tab navigation, contraste) | ⬜ |
+### 2. [Nome do teste]
+expected: [comportamento observável]
+result: pending
 
 ---
 
-## Report
+## Summary
 
-> Preenchido ao fim do teste.
-
-**Status geral**: pass | fail | partial
-**Steps falhados**: [lista de #s]
-**Observações do usuário**: [feedback livre]
+```
+total: N
+passed: 0
+issues: 0
+skipped: 0
+blocked: 0
+pending: N
+```
 
 ---
 
-## Action items
+## Gaps
 
-> Se houve fails, o agente registra aqui o que precisa fazer e adiciona em `STATE.md → Blockers`.
+> APPEND quando um teste resulta em `issue`. YAML estruturado — vira input do loop de fechamento de gap (`/verify` → issue de fix → `/execute` → re-verify). `severity` é **inferida**, nunca perguntada.
 
-- [ ] [item 1]
-- [ ] [item 2]
+```yaml
+- truth: "[comportamento esperado do teste]"
+  status: failed
+  reason: "Usuário reportou: [resposta verbatim]"
+  severity: blocker | major | minor | cosmetic
+  test: N
+  root_cause: ""   # preenchido na diagnose
+  fix_issue: ""    # preenchido quando a issue de fix é criada
+```
+
+[nenhum ainda]
+
+---
+
+## Inferência de severidade
+
+| Usuário diz | Infere |
+|---|---|
+| "crash", "erro", "exception", "falha total", "quebrou" | blocker |
+| "não funciona", "nada acontece", "errado", "faltando" | major |
+| "funciona mas...", "lento", "estranho", "pequeno" | minor |
+| "cor", "espaçamento", "alinhamento", "está torto" | cosmetic |
+
+Default = **major** se ambíguo. Pass = resposta vazia / "ok" / "sim" / "next". Blocked (servidor/device/build) **não** vira gap — é pré-requisito.

@@ -36,6 +36,20 @@
 
 ---
 
+## Waves
+
+> Análise de dependência das issues acima → grupos de execução. Gerado no `/break` Passo 6 a partir dos `Depends on` de cada issue. O `/execute` roda **wave por wave**: issues da mesma wave (todas `[P]`) rodam em paralelo (1 sub-agent cada); a wave seguinte só começa quando a anterior fecha.
+
+```
+Wave 1 (paralelo): prototype/01, prototype/02   ← sem dependências
+Wave 2 (paralelo): functional/05, functional/06  ← dependem da Wave 1
+Wave 3:            functional/07                  ← depende de 05 + 06
+```
+
+**Regra de wave:** issues numa wave **não podem** tocar os mesmos arquivos (senão conflito de escrita paralela). Se duas issues `[P]` colidem em arquivo, separe em waves diferentes ou funda numa issue só.
+
+---
+
 ## Implements
 
 > Quais requisitos da Spec.md este sprint entrega. Rastreabilidade obrigatória.
