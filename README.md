@@ -62,6 +62,7 @@ Complexity decides depth, not the other way around. The skill auto-sizes:
 - **Resumable UAT** — user testing one step at a time, survives `/clear`, auto-injects a **cold-start smoke test**, and runs a diagnose → fix → re-verify loop when issues are found.
 - **Security gate** — `/secure` reviews the sprint diff (delegating to the `security-review` skill when available) and blocks `/ship` if threats are open.
 - **Nyquist rule** — every acceptance criterion needs an automated sensor; if the test doesn't exist, creating it is the first sub-task.
+- **Model Advisor** — at each mode handoff (before `/clear`), the skill recommends which model to open the next session in: reasoning tier (Opus/Fable) for `/spec` and `/break`, workhorse (Sonnet) for `/execute` — plus per-issue caveats, since `/break` tags each issue with a `Model hint` and prompt-engineering-heavy issues warrant the reasoning tier even inside `/execute`.
 - **Living docs** — `STATE.md` (volatile), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (cross-sprint lessons), `PRD.md` (living product doc).
 
 ### Artifacts it produces
@@ -145,6 +146,7 @@ A complexidade decide a profundidade, não o contrário. A skill se auto-dimensi
 - **UAT resumível** — teste do usuário um passo por vez, sobrevive a `/clear`, injeta automaticamente um **cold-start smoke test** e roda um loop diagnose → fix → re-verify quando acha problema.
 - **Gate de segurança** — `/secure` revisa o diff do sprint (delegando à skill `security-review` quando disponível) e bloqueia o `/ship` se houver ameaça aberta.
 - **Regra Nyquist** — todo critério de aceitação precisa de um sensor automático; se o teste não existe, criá-lo é a primeira sub-task.
+- **Model Advisor** — em cada handoff de modo (antes do `/clear`), o skill recomenda em qual modelo abrir a próxima sessão: tier de raciocínio (Opus/Fable) para `/spec` e `/break`, workhorse (Sonnet) para `/execute` — com ressalvas por issue, já que o `/break` marca cada issue com um `Model hint` e issues prompt-engineering-heavy merecem o tier de raciocínio mesmo dentro do `/execute`.
 - **Living docs** — `STATE.md` (volátil), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (lições cross-sprint), `PRD.md` (documento vivo do produto).
 
 ### Artefatos que produz

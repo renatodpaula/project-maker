@@ -12,6 +12,7 @@ description: |
   Triggers explícitos: "criar projeto", "nova feature", "quero construir algo", "organizar minha ideia",
   "brainstorming de projeto", "planejar implementação", "quebrar em issues", "implementar issue",
   "validar feature", "testar feature", "revisar segurança", "criar PR", "abrir pull request",
+  "qual modelo rodar", "recomendar modelo", "que modelo uso",
   "/discover", "/init", "/spec", "/break", "/plan", "/execute", "/verify", "/secure", "/ship", "/build".
 ---
 
@@ -77,6 +78,8 @@ Workflow estruturado de Spec-Driven Development para construir projetos com IA s
 ```
 
 **Loop de fechamento (após o sprint passar no milestone gate):** `/verify` (se user-facing) → `/secure` (se toca segurança) → `/ship`. O `/ship` só cria o PR se o milestone gate passou, o `/verify` não tem gaps abertos e o `/secure` não tem ameaças abertas.
+
+**Recomendação de modelo em cada handoff:** ao terminar um modo e instruir `/clear` + próximo modo, o skill emite uma recomendação de qual modelo abrir na próxima sessão (ex: `/break` em tier raciocínio, `/execute` em Sonnet com ressalvas por issue). Ver regra **Model Advisor** nas Harness Rules.
 
 **Hierarquia de trabalho (regra de ferro):**
 
@@ -248,6 +251,43 @@ Este skill coexiste com outros skills instalados no ambiente. Antes de tarefas e
 | Quando trabalhar com plano explicitamente | `claude-mem:make-plan` + `claude-mem:do` | execução direta |
 
 Checar disponibilidade é barato — se o skill não está instalado, só continue com o fallback. Se o usuário parecer experiente ou já tiver acusado recebimento, pule a recomendação.
+
+### Model Advisor — recomendar modelo antes de cada etapa
+
+Cada modo tem um **perfil de trabalho** diferente — divergência/raciocínio vs. execução mecânica. Rodar o modelo certo economiza custo sem perder qualidade, e sobe qualidade onde ela importa. **Antes de instruir o usuário a abrir uma sessão nova (`/clear` + próximo modo), emita uma recomendação de modelo para a próxima etapa.** Emita também no Passo 0 de `/execute` (para a sessão que já está rodando).
+
+**Por que aqui e não no meio:** trocar de modelo custa uma sessão nova. A recomendação tem que sair **no handoff** — quando o usuário está prestes a `/clear` — para ele já abrir a próxima sessão no modelo certo.
+
+Perfis (nomes atuais como **referência** — use os modelos disponíveis na sessão; o princípio importa mais que a versão exata):
+
+| Tier | Modelos atuais | Sweet spot |
+|---|---|---|
+| **Raciocínio pesado** | Opus 4.8, Fable 5 | Decisões arquiteturais, trade-offs ambíguos, **prompt-engineering** (system prompts, agentes, DSLs), domínio novo, debugging difícil |
+| **Balanceado (workhorse)** | Sonnet 5 | Implementação de issues bem-especificadas, refactors mecânicos, escrita de testes — o grosso do `/execute` |
+| **Rápido/barato** | Haiku 4.5 | Edits triviais, lookups, formatação, tarefas de 1-2 arquivos sem raciocínio |
+
+Heurística por modo:
+
+| Modo | Recomendação padrão | Razão |
+|---|---|---|
+| `/discover`, `/spec` | **Raciocínio** (Opus/Fable) | Ambiguidade alta + captura de requisitos; poucos tokens, mas define tudo downstream |
+| `/break` | **Raciocínio** (Opus/Fable) | Pesquisa + decomposição + design de issues é raciocínio puro |
+| `/plan` | **Sonnet** | Enriquece uma issue; sobe para Opus/Fable se a issue for arquiteturalmente carregada |
+| `/execute` | **Sonnet** (workhorse) | Issues bem-especificadas. **Exceção:** issues com `Model hint` ≠ Sonnet rodam em Opus/Fable — só elas |
+| `/verify`, `/secure` | **Sonnet** | Sobe para Opus se a superfície de segurança for crítica |
+| `/ship` | **Sonnet/Haiku** | Mecânico |
+
+**Exceção por issue (a ressalva que importa):** issues **prompt-engineering-heavy** (escrever system prompts, projetar agentes/DSLs) ou **raciocínio-heavy** (algoritmo core, decisão arquitetural embutida) merecem tier de raciocínio **mesmo dentro do `/execute`**. Essa sinalização vem do campo `Model hint` que o `/break` grava em cada issue. No handoff para `/execute` (e no Passo 0), leia os hints e cite explicitamente quais issues fogem do padrão.
+
+Formato da recomendação (curto, 1-3 linhas, acionável — nunca um ensaio):
+> **Modelo:** abra `/break` em **Fable 5** (ou Opus). Troque para **Sonnet** no `/execute`.
+> **Ressalva:** issues R14/R15 (Cluster Creator, Script Engine) são prompt-engineering pesado — mesmo no `/execute`, considere Opus/Fable só nelas. Resto do execute: Sonnet.
+
+Regras:
+- **Recomende, não force.** Uma nota curta no fim do modo. Se o usuário já escolheu um modelo ou pediu para pular, não repita.
+- Cite a ressalva por issue **só se** existir issue com `Model hint` ≠ padrão. Sem hints especiais, uma linha basta.
+- Nomes de modelo mudam — não hardcode versões antigas. Ancore no **tier** (raciocínio/workhorse/rápido) e nomeie os modelos atuais da sessão.
+- Trigger explícito: se o usuário perguntar "qual modelo rodar?" a qualquer momento, aplique esta heurística para o modo atual/próximo e responda direto.
 
 ### Stuck Detection
 
@@ -468,7 +508,7 @@ Para `/spec feature`: inclua em cada item qual código existente será reutiliza
 **Passo 4 — Constitution.md** (apenas em `/spec new` sem /init prévio)
 Se não existir `Constitution.md`, gere seguindo as mesmas instruções do `/init` Passo 2.
 
-**Ao final:** exiba resumo da spec, liste marcadores `[NEEDS CLARIFICATION]` restantes se houver, e instrua:
+**Ao final:** exiba resumo da spec, liste marcadores `[NEEDS CLARIFICATION]` restantes se houver, emita a **recomendação de modelo** para o `/break` (regra Model Advisor — `/break` é raciocínio, tier Opus/Fable), e instrua:
 > "Spec gerada. Faça `/clear` e inicie nova conversa com `/project-maker break`."
 
 ---
@@ -524,7 +564,14 @@ No header de cada issue, inclua:
 Implements: [REQ-X, REQ-Y]  ← números dos requisitos da Spec.md
 Depends on: [lista de issues que devem ser concluídas antes]
 Can parallelize with: [lista de issues que podem rodar em paralelo]
+Model hint: [Sonnet | Opus/Fable]  ← ver Model Advisor
 ```
+
+**Model hint (obrigatório em toda issue).** Classifique o tier de modelo recomendado para implementar a issue, seguindo a regra **Model Advisor** das Harness Rules:
+- **`Sonnet`** (padrão) — issue bem-especificada, implementação direta, refactor mecânico, escrita de teste.
+- **`Opus/Fable`** — issue **prompt-engineering-heavy** (escrever system prompts, projetar agentes/DSLs) ou **raciocínio-heavy** (algoritmo core, decisão arquitetural embutida na implementação). Justifique em uma frase por que foge do padrão.
+
+O `/execute` lê esses hints para recomendar quais issues rodar em tier de raciocínio.
 
 **Regra de ferro:** uma issue tem que caber em uma janela de contexto. Se a sua lista de arquivos/comportamentos não cabe claramente, quebre em duas issues.
 
@@ -588,7 +635,7 @@ _Última atualização: [data]_
 Status de sprint: `🔲 planned` · `🔄 in-progress` · `⏸ pending-review` · `✅ done`
 Status de issue: `🔲 pendente` · `🔄 em progresso` · `⏸ blocked` · `✅ entregue`
 
-**Ao final:** liste sprints com suas issues e indicação de paralelismo. Instrua:
+**Ao final:** liste sprints com suas issues e indicação de paralelismo. Emita a **recomendação de modelo** para o `/execute` (regra Model Advisor): Sonnet como padrão, **mais a ressalva por issue** — varra os `Model hint` das issues geradas e cite explicitamente quais têm hint `Opus/Fable` para rodar em tier de raciocínio. Instrua:
 > "Artefatos gerados: research.md, data-model.md, contracts/, sprints/, issues/ e PRD.md. Faça `/clear` e inicie nova conversa com `/project-maker execute sprints/SPRINT-001-[slug].md`."
 
 ---
@@ -620,7 +667,7 @@ Reescreva a issue adicionando:
 
 Salve sobrescrevendo o arquivo da issue original.
 
-**Ao final:** instrua:
+**Ao final:** emita a **recomendação de modelo** para o `/execute` desta issue (regra Model Advisor — respeite o `Model hint` do header da issue: Sonnet no padrão, Opus/Fable se o hint indicar) e instrua:
 > "Issue planejada. Faça `/clear` e inicie nova conversa com `/project-maker execute [caminho-da-issue]`."
 
 ---
@@ -661,6 +708,7 @@ Salve sobrescrevendo o arquivo da issue original.
 - Leia `data-model.md` e contratos relevantes em `contracts/` se o sprint envolver dados/APIs
 - Para cada issue do sprint, verifique se está enriquecida (tem seção "Arquivos a criar"). Se alguma não estiver, instrua a rodar `/plan` para ela antes de continuar
 - **Se qualquer issue do sprint tocar arquivo/área em `steering/CONCERNS.md`**, carregue o CONCERNS
+- **Model Advisor:** varra o campo `Model hint` das issues do sprint. Se alguma tem hint `Opus/Fable`, avise o usuário no início: "issues X, Y são raciocínio/prompt-heavy — se você não está em tier de raciocínio, considere trocar de modelo para essas". Não bloqueia; é uma recomendação (regra Model Advisor).
 
 Marque o sprint como `🔄 in-progress` no PRD.md e no próprio sprint.md.
 

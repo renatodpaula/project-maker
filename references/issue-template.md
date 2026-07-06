@@ -4,6 +4,10 @@
 **Spec relacionada**: `Spec.md`
 **Branch**: `issue/[slug-do-titulo]`
 **Status**: draft | planned | in-progress | done
+**Model hint**: Sonnet | Opus/Fable
+> Tier de modelo recomendado para implementar (regra Model Advisor). Padrão `Sonnet`.
+> Use `Opus/Fable` se a issue for prompt-engineering-heavy (system prompts, agentes/DSLs) ou
+> raciocínio-heavy (algoritmo core, decisão arquitetural embutida) — justifique em 1 frase.
 
 ## Descrição
 [O que precisa ser feito em 2-3 frases objetivas]
