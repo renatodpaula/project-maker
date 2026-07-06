@@ -224,6 +224,10 @@ Use sub-agents (Task tool ou equivalente) para manter o contexto do agente orque
 
 O orquestrador usa isso para atualizar STATE.md, PRD.md e decidir o próximo passo.
 
+**Agentes registrados vs. prompt-colado:** os agentes de `references/agents/` têm frontmatter Claude Code (`name`, `tools`, `model`). Instalados em `.claude/agents/` do projeto (`/init` Passo 4), viram `subagent_type` nativo — restrição de tools por harness e model default de verdade. Não instalados, o fallback é ler o .md e usar como prompt de sub-agent genérico. Prefira sempre o registrado quando existir.
+
+**Workflow tool (opt-in):** se a sessão tem o Workflow tool e o usuário **pediu explicitamente** orquestração multi-agente (ex: "ultracode", "use um workflow"), as waves do `/execute` podem rodar via `pipeline()` (implementer → validator por issue, sem barrier entre issues). Nunca use Workflow sem esse opt-in — o Agent tool comum cobre o caso padrão.
+
 ### Gate Check 0/1 (sensor externo)
 
 Toda issue tem um campo `Gate` com um comando shell. O agente **NUNCA** pode marcar uma issue como done sem:
@@ -282,6 +286,8 @@ Heurística por modo:
 Formato da recomendação (curto, 1-3 linhas, acionável — nunca um ensaio):
 > **Modelo:** abra `/break` em **Fable 5** (ou Opus). Troque para **Sonnet** no `/execute`.
 > **Ressalva:** issues R14/R15 (Cluster Creator, Script Engine) são prompt-engineering pesado — mesmo no `/execute`, considere Opus/Fable só nelas. Resto do execute: Sonnet.
+
+**Model Routing automático (dentro do `/execute`):** o Agent tool aceita override de `model` por chamada. Se o harness da sessão suporta isso, a ressalva por issue deixa de ser aviso e vira roteamento: o orquestrador roda em Sonnet e despacha sub-agents com o modelo do `Model hint` da issue — `Opus/Fable` → `model: opus`, padrão → herda a sessão. O usuário não precisa trocar de modelo no meio do sprint. A recomendação de sessão continua valendo para o **orquestrador** e para modos sem sub-agents (`/spec`, `/break`).
 
 Regras:
 - **Recomende, não force.** Uma nota curta no fim do modo. Se o usuário já escolheu um modelo ou pediu para pular, não repita.
@@ -446,6 +452,21 @@ Gere os arquivos vivos de harness a partir dos templates em `references/`:
 - `KNOWLEDGE.md` na raiz — de `references/knowledge-template.md`. Deixar vazio; append conforme patterns/gotchas são descobertos.
 - `steering/CONCERNS.md` — de `references/concerns-template.md`. Deixar vazio; preenchido conforme tech debt e áreas frágeis aparecem.
 
+**Passo 4 — Registrar agentes do skill no projeto**
+
+Copie os agentes de `references/agents/` do skill para `.claude/agents/` do projeto:
+
+```bash
+mkdir -p .claude/agents && cp [skill-dir]/references/agents/*.md .claude/agents/
+```
+
+Isso registra os writers (component, action, hook, model, route, integration, test) e o validator como **agentes nativos do Claude Code**. Efeitos:
+- O `/execute` pode despachar via `subagent_type` (ex: `component-writer`) em vez de colar o .md como prompt
+- O frontmatter passa a valer de verdade: `tools:` restringe ferramentas por harness (o validator **não tem** Write/Edit — "nunca implementa" vira garantia mecânica, não promessa de prompt) e `model:` define o modelo default do agente
+- Se já existir um agente com o mesmo nome em `.claude/agents/`, **não sobrescreva** — avise e pule
+
+Se o usuário recusar ou o projeto não quiser os agentes, tudo continua funcionando no modo fallback (ler o .md e usar como prompt de sub-agent genérico).
+
 **Ao final:** instrua a iniciar nova conversa com `/project-maker spec new`.
 
 ---
@@ -457,7 +478,7 @@ Gere os arquivos vivos de harness a partir dos templates em `references/`:
 **Passo 1 — Contexto**
 - Se existirem `steering/` e `Constitution.md`: leia-os antes de qualquer coisa.
 - Se existir `brief.md`: leia-o. Não repita perguntas já respondidas nele.
-- Se argumento for `feature`: use o agente `code-explorer` (`~/.claude/plugins/marketplaces/claude-plugins-official/plugins/feature-dev/agents/code-explorer.md`) para mapear o codebase existente antes de criar a spec.
+- Se argumento for `feature`: mapeie o codebase existente antes de criar a spec, delegando a um agente de exploração. Preferência: agente `code-explorer` (`~/.claude/plugins/marketplaces/claude-plugins-official/plugins/feature-dev/agents/code-explorer.md`) se instalado; senão o agente nativo **`Explore`** (read-only, sempre disponível).
 
 **Passo 2 — Perguntas de complemento**
 Faça apenas as perguntas que o brief não respondeu ou que o codebase não deixa claro:
@@ -649,7 +670,7 @@ Leia `data-model.md` e o contrato relevante em `contracts/` se existirem.
 Leia a issue completa, incluindo os campos `Implements`, `Depends on` e `Can parallelize with`.
 
 **Passo 1 — Pesquisa interna**
-Use o agente `code-explorer` (`~/.claude/plugins/marketplaces/claude-plugins-official/plugins/feature-dev/agents/code-explorer.md`) para:
+Delegue a um agente de exploração — `code-explorer` (`~/.claude/plugins/marketplaces/claude-plugins-official/plugins/feature-dev/agents/code-explorer.md`) se instalado, senão o agente nativo **`Explore`** (read-only) — para:
 - Encontrar arquivos existentes relacionados à issue
 - Identificar padrões de implementação já usados no projeto
 - Detectar código reutilizável (componentes, hooks, utils, tipos)
@@ -708,7 +729,7 @@ Salve sobrescrevendo o arquivo da issue original.
 - Leia `data-model.md` e contratos relevantes em `contracts/` se o sprint envolver dados/APIs
 - Para cada issue do sprint, verifique se está enriquecida (tem seção "Arquivos a criar"). Se alguma não estiver, instrua a rodar `/plan` para ela antes de continuar
 - **Se qualquer issue do sprint tocar arquivo/área em `steering/CONCERNS.md`**, carregue o CONCERNS
-- **Model Advisor:** varra o campo `Model hint` das issues do sprint. Se alguma tem hint `Opus/Fable`, avise o usuário no início: "issues X, Y são raciocínio/prompt-heavy — se você não está em tier de raciocínio, considere trocar de modelo para essas". Não bloqueia; é uma recomendação (regra Model Advisor).
+- **Model Advisor / Routing:** varra o campo `Model hint` das issues do sprint. Se alguma tem hint `Opus/Fable`: (a) se o Agent tool da sessão suporta override de `model`, informe que essas issues serão despachadas em tier de raciocínio automaticamente e siga; (b) se não suporta, avise: "issues X, Y são raciocínio/prompt-heavy — considere trocar de modelo para essas". Não bloqueia (regra Model Advisor).
 
 Marque o sprint como `🔄 in-progress` no PRD.md e no próprio sprint.md.
 
@@ -741,17 +762,23 @@ Se algum gate falhar, documente a exceção no Summary da issue antes de prosseg
 
 **2.2 — Spawn do implementer** (sub-agent isolado)
 
-Dispare um sub-agent usando o agente apropriado de `references/agents/` conforme o tipo de arquivo da issue:
+Escolha o agente conforme o tipo de arquivo da issue:
 
 | Tipo de arquivo | Agente |
 |---|---|
-| Componentes UI (`.tsx`, `.vue`, `.svelte`) | `references/agents/component-writer.md` |
-| Server actions, lógica de servidor | `references/agents/action-writer.md` |
-| Hooks de estado/efeito | `references/agents/hook-writer.md` |
-| Schema, migrations, modelos | `references/agents/model-writer.md` |
-| Rotas de API, endpoints | `references/agents/route-writer.md` |
-| Integrações externas | `references/agents/integration-writer.md` |
-| Arquivos de teste | `references/agents/test-writer.md` |
+| Componentes UI (`.tsx`, `.vue`, `.svelte`) | `component-writer` |
+| Server actions, lógica de servidor | `action-writer` |
+| Hooks de estado/efeito | `hook-writer` |
+| Schema, migrations, modelos | `model-writer` |
+| Rotas de API, endpoints | `route-writer` |
+| Integrações externas | `integration-writer` |
+| Arquivos de teste | `test-writer` |
+
+**Como despachar (em ordem de preferência):**
+1. **Agente registrado** — se o agente existe em `.claude/agents/` do projeto (instalado pelo `/init` Passo 4), dispare via `subagent_type` com o nome da tabela. O frontmatter cuida de tools e model default.
+2. **Fallback** — leia `references/agents/[nome].md` do skill e use o conteúdo como prompt de um sub-agent genérico.
+
+**Model Routing (regra Model Advisor):** se a issue tem `Model hint: Opus/Fable` e o Agent tool suporta override de `model`, passe `model: opus` no dispatch **desta issue**. Hint `Sonnet` ou ausente → não passe override (herda o default). Vale para os dois modos de dispatch.
 
 **Contexto que o implementer recebe** (regras de Sub-Agent Delegation):
 - A issue completa (Descrição, Cenários, Done when, Tests, Gate, Arquivos a criar/modificar, Padrões)
@@ -771,7 +798,7 @@ Dispare um sub-agent usando o agente apropriado de `references/agents/` conforme
 
 **2.3 — Spawn do validator** (sub-agent SEPARADO)
 
-Dispare `references/agents/validator.md` como sub-agent independente. O validator **nunca** implementa — só avalia.
+Dispare o `validator` como sub-agent independente — mesma ordem de preferência do 2.2: `subagent_type: validator` se registrado em `.claude/agents/`, senão `references/agents/validator.md` como prompt. O validator **nunca** implementa — só avalia. Registrado, isso é garantia mecânica: o frontmatter dele não inclui Write/Edit.
 
 **Contexto que o validator recebe:**
 - Issue original (antes da implementação)
@@ -1058,8 +1085,8 @@ Retoma o trabalho a partir do `STATE.md` da última sessão. É a forma correta 
 - `references/decisions-template.md` — formato do DECISIONS.md (leia no /init ao gerar)
 - `references/knowledge-template.md` — formato do KNOWLEDGE.md (leia no /init ao gerar)
 - `references/concerns-template.md` — formato do steering/CONCERNS.md (leia no /init ao gerar)
-- `references/agents/` — instruções dos agentes especializados (leia no /execute conforme necessário)
-- `references/agents/validator.md` — agente de validação independente (usado no loop do /execute)
+- `references/agents/` — agentes especializados com frontmatter Claude Code; o /init Passo 4 os instala em `.claude/agents/` do projeto (subagent_type nativo); fallback: ler como prompt no /execute
+- `references/agents/validator.md` — agente de validação independente (usado no loop do /execute; sem Write/Edit no frontmatter)
 
 **Artefatos gerados no projeto:**
 - `brief.md` — gerado no /discover

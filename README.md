@@ -62,7 +62,8 @@ Complexity decides depth, not the other way around. The skill auto-sizes:
 - **Resumable UAT** — user testing one step at a time, survives `/clear`, auto-injects a **cold-start smoke test**, and runs a diagnose → fix → re-verify loop when issues are found.
 - **Security gate** — `/secure` reviews the sprint diff (delegating to the `security-review` skill when available) and blocks `/ship` if threats are open.
 - **Nyquist rule** — every acceptance criterion needs an automated sensor; if the test doesn't exist, creating it is the first sub-task.
-- **Model Advisor** — at each mode handoff (before `/clear`), the skill recommends which model to open the next session in: reasoning tier (Opus/Fable) for `/spec` and `/break`, workhorse (Sonnet) for `/execute` — plus per-issue caveats, since `/break` tags each issue with a `Model hint` and prompt-engineering-heavy issues warrant the reasoning tier even inside `/execute`.
+- **Model Advisor + Routing** — at each mode handoff (before `/clear`), the skill recommends which model to open the next session in: reasoning tier (Opus/Fable) for `/spec` and `/break`, workhorse (Sonnet) for `/execute`. `/break` tags each issue with a `Model hint`; inside `/execute`, prompt-engineering-heavy issues are auto-dispatched to the reasoning tier via per-agent model override — no session switching needed.
+- **Native registered agents** — `/init` installs the skill's specialized agents (writers + validator) into the project's `.claude/agents/`, making them real Claude Code subagents: tool restrictions enforced by the harness (the validator physically cannot edit code) and per-agent default models.
 - **Living docs** — `STATE.md` (volatile), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (cross-sprint lessons), `PRD.md` (living product doc).
 
 ### Artifacts it produces
@@ -146,7 +147,8 @@ A complexidade decide a profundidade, não o contrário. A skill se auto-dimensi
 - **UAT resumível** — teste do usuário um passo por vez, sobrevive a `/clear`, injeta automaticamente um **cold-start smoke test** e roda um loop diagnose → fix → re-verify quando acha problema.
 - **Gate de segurança** — `/secure` revisa o diff do sprint (delegando à skill `security-review` quando disponível) e bloqueia o `/ship` se houver ameaça aberta.
 - **Regra Nyquist** — todo critério de aceitação precisa de um sensor automático; se o teste não existe, criá-lo é a primeira sub-task.
-- **Model Advisor** — em cada handoff de modo (antes do `/clear`), o skill recomenda em qual modelo abrir a próxima sessão: tier de raciocínio (Opus/Fable) para `/spec` e `/break`, workhorse (Sonnet) para `/execute` — com ressalvas por issue, já que o `/break` marca cada issue com um `Model hint` e issues prompt-engineering-heavy merecem o tier de raciocínio mesmo dentro do `/execute`.
+- **Model Advisor + Routing** — em cada handoff de modo (antes do `/clear`), o skill recomenda em qual modelo abrir a próxima sessão: tier de raciocínio (Opus/Fable) para `/spec` e `/break`, workhorse (Sonnet) para `/execute`. O `/break` marca cada issue com um `Model hint`; dentro do `/execute`, issues prompt-engineering-heavy são despachadas automaticamente no tier de raciocínio via override de modelo por agente — sem trocar de sessão.
+- **Agentes nativos registrados** — o `/init` instala os agentes especializados do skill (writers + validator) em `.claude/agents/` do projeto, tornando-os subagentes reais do Claude Code: restrição de ferramentas garantida pelo harness (o validator fisicamente não consegue editar código) e modelo default por agente.
 - **Living docs** — `STATE.md` (volátil), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (lições cross-sprint), `PRD.md` (documento vivo do produto).
 
 ### Artefatos que produz
