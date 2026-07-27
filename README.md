@@ -6,7 +6,7 @@
 
 `discover → init → spec → break → plan → execute → verify → secure → ship`
 
-MIT License · v3.0 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai)
+MIT License · v3.1 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai)
 
 [English](#english) · [Português](#português)
 
@@ -88,6 +88,12 @@ Restart Claude Code, then use `/project-maker` in any project.
 ```
 
 The skill detects which stage you're in and explains the next step. Or jump straight to a mode: `/project-maker spec`, `/project-maker execute docs/sprints/SPRINT-001-auth.md`, etc.
+
+### What's new in v3.1
+
+- **Progressive disclosure** — `SKILL.md` shrank from 1216 to ~470 lines and became a router (scale matrix + Harness Rules); each mode's full playbook moved to `references/modes/` and is loaded on demand. ~60% less context per invocation.
+- **Canonical artifact locations** — planning artifacts live under `docs/` by default; living docs at the root; UAT/SECURITY reports are per-sprint (`docs/sprints/SPRINT-NNN-uat.md` / `-SECURITY.md`). An existing project convention wins and is recorded in `steering/structure.md`.
+- Scoped trigger phrases (fewer false activations), `/build` fallback when `Spec.md` is missing, `--quick` no longer assumes a `PRD.md`, documented per-call model override precedence, and skill self-test scenarios in `evals/`.
 
 ### What's new in v3
 
@@ -174,6 +180,12 @@ Reinicie o Claude Code e use `/project-maker` em qualquer projeto.
 ```
 
 A skill detecta em qual etapa você está e explica o próximo passo. Ou vá direto a um modo: `/project-maker spec`, `/project-maker execute docs/sprints/SPRINT-001-auth.md`, etc.
+
+### Novidades da v3.1
+
+- **Progressive disclosure** — o `SKILL.md` caiu de 1216 para ~470 linhas e virou um roteador (matriz de escala + Harness Rules); o playbook completo de cada modo foi para `references/modes/` e é carregado sob demanda. ~60% menos contexto por invocação.
+- **Localização canônica dos artefatos** — artefatos de planejamento vivem em `docs/` por padrão; living docs na raiz; relatórios de UAT/SECURITY são por sprint (`docs/sprints/SPRINT-NNN-uat.md` / `-SECURITY.md`). Convenção existente do projeto vence e fica registrada em `steering/structure.md`.
+- Triggers escopados (menos ativações falsas), fallback do `/build` quando não há `Spec.md`, `--quick` não assume mais `PRD.md`, precedência do override de modelo por chamada documentada, e cenários de auto-teste do skill em `evals/`.
 
 ### Novidades da v3
 
