@@ -9,7 +9,7 @@ _Última atualização: YYYY-MM-DD HH:MM_
 
 ## Current Session
 
-- **Active feature/issue**: [id ou path — ex: `issues/functional/05-submit-form.md`]
+- **Active feature/issue**: [id ou path — ex: `docs/issues/functional/05-submit-form.md`]
 - **Phase**: [spec | break | plan | execute | review]
 - **Next action**: [1 linha objetiva — ex: "rodar gate check em 05-submit-form e validar spec deviations"]
 - **Next command**: `[comando completo e copiável, com path real — ex: /project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md]`

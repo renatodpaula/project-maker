@@ -29,10 +29,10 @@
 > Regra de ferro: **uma issue tem que caber em uma janela de contexto. Se não cabe, são duas.**
 > Marque paralelismo com `[P]` — issues sem dependências entre si podem rodar em paralelo.
 
-- [ ] `issues/prototype/01-pagina-login.md`
-- [ ] `issues/prototype/02-pagina-dashboard.md` [P]
-- [ ] `issues/functional/05-submit-login.md`
-- [ ] `issues/functional/06-session-check.md` [P]
+- [ ] `docs/issues/prototype/01-pagina-login.md`
+- [ ] `docs/issues/prototype/02-pagina-dashboard.md` [P]
+- [ ] `docs/issues/functional/05-submit-login.md`
+- [ ] `docs/issues/functional/06-session-check.md` [P]
 
 ---
 

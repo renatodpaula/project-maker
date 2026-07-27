@@ -64,7 +64,7 @@ Complexity decides depth, not the other way around. The skill auto-sizes:
 - **Nyquist rule** — every acceptance criterion needs an automated sensor; if the test doesn't exist, creating it is the first sub-task.
 - **Model Advisor + Routing** — at each mode handoff (before `/clear`), the skill recommends which model to open the next session in: reasoning tier (Opus/Fable) for `/spec` and `/break`, workhorse (Sonnet) for `/execute`. `/break` tags each issue with a `Model hint`; inside `/execute`, prompt-engineering-heavy issues are auto-dispatched to the reasoning tier via per-agent model override — no session switching needed.
 - **Handoff Block** — every mode ends with the **complete next command**, real path resolved from disk (`/project-maker execute docs/sprints/SPRINT-031-whatsapp-reply.md`, never a `[placeholder]`), in a copy-paste code block, with the model recommendation in the same box. You never have to ask "what's the command now?". The command is also written to `STATE.md → Next command`, so it survives `/clear`.
-- **Native registered agents** — `/init` installs the skill's specialized agents (writers + validator) into the project's `.claude/agents/`, making them real Claude Code subagents: tool restrictions enforced by the harness (the validator physically cannot edit code) and per-agent default models.
+- **Native registered agents** — `/init` installs the skill's specialized agents (writers + validator) into the project's `.claude/agents/`, making them real Claude Code subagents: tool restrictions enforced by the harness (the validator has no Write/Edit — direct file edits are blocked; it keeps Bash to run gate commands) and per-agent default models.
 - **Living docs** — `STATE.md` (volatile), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (cross-sprint lessons), `PRD.md` (living product doc).
 
 ### Artifacts it produces
@@ -87,7 +87,7 @@ Restart Claude Code, then use `/project-maker` in any project.
 /project-maker
 ```
 
-The skill detects which stage you're in and explains the next step. Or jump straight to a mode: `/project-maker spec`, `/project-maker execute sprints/SPRINT-001-auth.md`, etc.
+The skill detects which stage you're in and explains the next step. Or jump straight to a mode: `/project-maker spec`, `/project-maker execute docs/sprints/SPRINT-001-auth.md`, etc.
 
 ### What's new in v3
 
@@ -150,7 +150,7 @@ A complexidade decide a profundidade, não o contrário. A skill se auto-dimensi
 - **Regra Nyquist** — todo critério de aceitação precisa de um sensor automático; se o teste não existe, criá-lo é a primeira sub-task.
 - **Model Advisor + Routing** — em cada handoff de modo (antes do `/clear`), o skill recomenda em qual modelo abrir a próxima sessão: tier de raciocínio (Opus/Fable) para `/spec` e `/break`, workhorse (Sonnet) para `/execute`. O `/break` marca cada issue com um `Model hint`; dentro do `/execute`, issues prompt-engineering-heavy são despachadas automaticamente no tier de raciocínio via override de modelo por agente — sem trocar de sessão.
 - **Bloco de Handoff** — todo modo termina com o **comando completo do próximo passo**, path real resolvido do disco (`/project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md`, nunca um `[placeholder]`), num bloco de código pronto pra copiar, com a recomendação de modelo na mesma caixa. Você nunca precisa perguntar "qual o comando agora?". O comando também é gravado em `STATE.md → Next command`, então sobrevive ao `/clear`.
-- **Agentes nativos registrados** — o `/init` instala os agentes especializados do skill (writers + validator) em `.claude/agents/` do projeto, tornando-os subagentes reais do Claude Code: restrição de ferramentas garantida pelo harness (o validator fisicamente não consegue editar código) e modelo default por agente.
+- **Agentes nativos registrados** — o `/init` instala os agentes especializados do skill (writers + validator) em `.claude/agents/` do projeto, tornando-os subagentes reais do Claude Code: restrição de ferramentas garantida pelo harness (o validator não tem Write/Edit — edits diretos de arquivo ficam bloqueados; ele mantém Bash para rodar o Gate) e modelo default por agente.
 - **Living docs** — `STATE.md` (volátil), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (lições cross-sprint), `PRD.md` (documento vivo do produto).
 
 ### Artefatos que produz
@@ -173,7 +173,7 @@ Reinicie o Claude Code e use `/project-maker` em qualquer projeto.
 /project-maker
 ```
 
-A skill detecta em qual etapa você está e explica o próximo passo. Ou vá direto a um modo: `/project-maker spec`, `/project-maker execute sprints/SPRINT-001-auth.md`, etc.
+A skill detecta em qual etapa você está e explica o próximo passo. Ou vá direto a um modo: `/project-maker spec`, `/project-maker execute docs/sprints/SPRINT-001-auth.md`, etc.
 
 ### Novidades da v3
 
