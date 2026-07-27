@@ -13,6 +13,7 @@ description: |
   "brainstorming de projeto", "planejar implementação", "quebrar em issues", "implementar issue",
   "validar feature", "testar feature", "revisar segurança", "criar PR", "abrir pull request",
   "qual modelo rodar", "recomendar modelo", "que modelo uso",
+  "qual o comando", "qual o próximo passo", "e agora", "como continuo",
   "/discover", "/init", "/spec", "/break", "/plan", "/execute", "/verify", "/secure", "/ship", "/build".
 ---
 
@@ -79,7 +80,7 @@ Workflow estruturado de Spec-Driven Development para construir projetos com IA s
 
 **Loop de fechamento (após o sprint passar no milestone gate):** `/verify` (se user-facing) → `/secure` (se toca segurança) → `/ship`. O `/ship` só cria o PR se o milestone gate passou, o `/verify` não tem gaps abertos e o `/secure` não tem ameaças abertas.
 
-**Recomendação de modelo em cada handoff:** ao terminar um modo e instruir `/clear` + próximo modo, o skill emite uma recomendação de qual modelo abrir na próxima sessão (ex: `/break` em tier raciocínio, `/execute` em Sonnet com ressalvas por issue). Ver regra **Model Advisor** nas Harness Rules.
+**Bloco de Handoff no fim de todo modo:** todo modo termina entregando o **comando completo do próximo passo**, com o path real resolvido do disco (`/project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md`, nunca `[sprint]`), pronto pra copiar, mais a recomendação de modelo na mesma caixa. O usuário nunca precisa perguntar "qual o comando agora?". Ver regras **Next Command** e **Model Advisor** nas Harness Rules.
 
 **Hierarquia de trabalho (regra de ferro):**
 
@@ -157,6 +158,8 @@ Em **todo comando**, antes de executar qualquer passo:
 7. Carregar spec/sprint/issue/contract específico sob demanda — nunca preventivamente
 
 **Ao fim de todo `/execute` e `/build`**: atualizar `STATE.md` com o que foi feito, blockers ativos, próximo passo, handoff note. Se tomou decisão arquitetural nova, append em `DECISIONS.md`. Se aprendeu algo reusável, append em `KNOWLEDGE.md`.
+
+**`Next command` do STATE.md**: sempre que gravar `STATE.md`, escreva nos campos `Next command` e `Next model` **exatamente** o comando e o modelo emitidos no Bloco de Handoff — path real, copiável. É o que faz o comando sobreviver ao `/clear`: qualquer sessão nova (ou `/resume`) lê o campo e reemite o bloco sem redescobrir nada.
 
 Se algum desses arquivos não existir ainda, criá-lo a partir do template correspondente em `references/` na primeira execução que encontrar um projeto inicializado.
 
@@ -295,6 +298,35 @@ Regras:
 - Nomes de modelo mudam — não hardcode versões antigas. Ancore no **tier** (raciocínio/workhorse/rápido) e nomeie os modelos atuais da sessão.
 - Trigger explícito: se o usuário perguntar "qual modelo rodar?" a qualquer momento, aplique esta heurística para o modo atual/próximo e responda direto.
 
+### Next Command — todo modo termina com o comando completo
+
+**Regra dura:** nenhum modo termina sem emitir o **Bloco de Handoff**. Se o usuário precisou perguntar "qual o comando agora?", o modo anterior falhou. O bloco é a **última coisa** da resposta — depois dele não vem mais nada.
+
+Formato (fixo):
+
+````
+**▶ Próximo passo** — `/clear` primeiro, depois:
+
+```
+/project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md
+```
+
+**Modelo:** Sonnet 5 — o orquestrador só despacha sub-agents.
+**Ressalva:** issues 133/134/135 têm `Model hint: Opus/Fable` — roteadas automaticamente.
+**Depois:** `/verify` → `/secure` → `/ship`.
+````
+
+Regras do bloco:
+
+1. **Caminho real, resolvido do disco.** Nunca emita placeholder — `[slug]`, `NNN`, `[caminho-da-issue]`, `...` no comando final é bug. Use o path exato como o artefato foi gravado, com o diretório real (`docs/sprints/…` se caiu lá, não `sprints/…`). Em dúvida, liste o diretório (`ls`/Glob) **antes** de emitir.
+2. **O comando vai sozinho num bloco de código**, uma linha, pronto pra copiar. Sem prosa dentro do bloco, sem `$`, sem comentário.
+3. **Um comando primário.** Se existe alternativa legítima (ex.: pular `/verify` porque não é user-facing), liste no máximo **2** extras abaixo, rotuladas, cada uma com o comando completo — nunca uma descrição do comando.
+4. **Emita sempre, inclusive quando o modo bloqueou.** Milestone gate reprovou, threats abertas, blocker ativo → o comando do bloco é o de **recuperação** (ex.: `/project-maker execute` nas issues de fix), não o do próximo estágio.
+5. **`/clear` só quando muda de sessão.** Modos que continuam na mesma sessão (`/build`, `--quick` encadeado, `/resume`) omitem a linha do clear.
+6. **Modelo entra no mesmo bloco.** A recomendação do Model Advisor é a linha `**Modelo:**` — não é uma seção separada nem um parágrafo antes.
+7. **Máx. 4 linhas de prosa** (Modelo, Ressalva, Depois, e no máximo uma nota). Bloco é operacional, não relatório. Ressalva só existe se houver `Model hint` fora do padrão.
+8. **Trigger explícito:** se o usuário perguntar "qual o comando?" / "e agora?" a qualquer momento, responda com o Bloco de Handoff do estado atual — leia STATE.md se precisar resolver o path.
+
 ### Stuck Detection
 
 Se durante `/execute` o validator reprovar a mesma issue **3 vezes seguidas**, ou o implementer tentar a mesma fix **2 vezes** sem progresso:
@@ -375,7 +407,12 @@ Ao gerar o `brief.md`:
 - Mostre o brief ao usuário e pergunte se quer ajustar ou resolver os marcadores
 - Só instrua a avançar quando não restar marcadores sem resolução
 
-**Ao confirmar:** instrua a iniciar nova conversa com `/project-maker init`.
+**Ao confirmar:** emita o **Bloco de Handoff** (regra Next Command) com o comando completo:
+> **▶ Próximo passo** — `/clear` primeiro, depois:
+> ```
+> /project-maker init
+> ```
+> **Modelo:** tier raciocínio (Opus/Fable) — `/init` define steering e Constitution.
 
 ---
 
@@ -447,7 +484,7 @@ Gere `Constitution.md` na raiz com princípios não negociáveis:
 **Passo 3 — Living docs e CONCERNS.md**
 Gere os arquivos vivos de harness a partir dos templates em `references/`:
 
-- `STATE.md` na raiz — de `references/state-template.md`. Preencher `Current Session` com fase atual (`init`), `Next action` ("iniciar /spec"), demais seções vazias.
+- `STATE.md` na raiz — de `references/state-template.md`. Preencher `Current Session` com fase atual (`init`), `Next action` ("iniciar /spec"), `Next command` (`/project-maker spec new`) e `Next model` (raciocínio), demais seções vazias.
 - `DECISIONS.md` na raiz — de `references/decisions-template.md`. Deixar vazio; append conforme decisões são tomadas.
 - `KNOWLEDGE.md` na raiz — de `references/knowledge-template.md`. Deixar vazio; append conforme patterns/gotchas são descobertos.
 - `steering/CONCERNS.md` — de `references/concerns-template.md`. Deixar vazio; preenchido conforme tech debt e áreas frágeis aparecem.
@@ -467,7 +504,12 @@ Isso registra os writers (component, action, hook, model, route, integration, te
 
 Se o usuário recusar ou o projeto não quiser os agentes, tudo continua funcionando no modo fallback (ler o .md e usar como prompt de sub-agent genérico).
 
-**Ao final:** instrua a iniciar nova conversa com `/project-maker spec new`.
+**Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o comando completo — `spec new` em projeto novo, `spec feature "[nome]"` se o init foi rodado em projeto existente:
+> **▶ Próximo passo** — `/clear` primeiro, depois:
+> ```
+> /project-maker spec new
+> ```
+> **Modelo:** tier raciocínio (Opus/Fable) — captura de requisitos define tudo downstream.
 
 ---
 
@@ -529,8 +571,14 @@ Para `/spec feature`: inclua em cada item qual código existente será reutiliza
 **Passo 4 — Constitution.md** (apenas em `/spec new` sem /init prévio)
 Se não existir `Constitution.md`, gere seguindo as mesmas instruções do `/init` Passo 2.
 
-**Ao final:** exiba resumo da spec, liste marcadores `[NEEDS CLARIFICATION]` restantes se houver, emita a **recomendação de modelo** para o `/break` (regra Model Advisor — `/break` é raciocínio, tier Opus/Fable), e instrua:
-> "Spec gerada. Faça `/clear` e inicie nova conversa com `/project-maker break`."
+**Ao final:** exiba resumo da spec, liste marcadores `[NEEDS CLARIFICATION]` restantes se houver, e feche com o **Bloco de Handoff** (regra Next Command) — comando completo + modelo na mesma caixa:
+> **▶ Próximo passo** — `/clear` primeiro, depois:
+> ```
+> /project-maker break
+> ```
+> **Modelo:** tier raciocínio (Opus/Fable) — pesquisa + decomposição é raciocínio puro.
+
+Se restaram marcadores `[NEEDS CLARIFICATION]` sem resolver, o bloco muda: o comando primário passa a ser resolver os marcadores nesta sessão, e o `/break` vira a alternativa rotulada.
 
 ---
 
@@ -656,8 +704,17 @@ _Última atualização: [data]_
 Status de sprint: `🔲 planned` · `🔄 in-progress` · `⏸ pending-review` · `✅ done`
 Status de issue: `🔲 pendente` · `🔄 em progresso` · `⏸ blocked` · `✅ entregue`
 
-**Ao final:** liste sprints com suas issues e indicação de paralelismo. Emita a **recomendação de modelo** para o `/execute` (regra Model Advisor): Sonnet como padrão, **mais a ressalva por issue** — varra os `Model hint` das issues geradas e cite explicitamente quais têm hint `Opus/Fable` para rodar em tier de raciocínio. Instrua:
-> "Artefatos gerados: research.md, data-model.md, contracts/, sprints/, issues/ e PRD.md. Faça `/clear` e inicie nova conversa com `/project-maker execute sprints/SPRINT-001-[slug].md`."
+**Ao final:** liste sprints com suas issues e indicação de paralelismo, cite os artefatos gerados (research.md, data-model.md, contracts/, sprints/, issues/, PRD.md) e feche com o **Bloco de Handoff** (regra Next Command).
+
+Antes de emitir, **resolva o path real do primeiro sprint** — use o nome de arquivo exato como foi gravado, com o diretório real. Varra os `Model hint` das issues desse sprint: se alguma for `Opus/Fable`, cite os números na linha `**Ressalva:**`; se nenhuma for, omita a linha.
+
+> **▶ Próximo passo** — `/clear` primeiro, depois:
+> ```
+> /project-maker execute docs/sprints/SPRINT-001-onboarding.md
+> ```
+> **Modelo:** Sonnet — o orquestrador só despacha sub-agents.
+> **Ressalva:** issues 12/14 têm `Model hint: Opus/Fable` — roteadas automaticamente.
+> **Depois:** `/verify` → `/secure` → `/ship`.
 
 ---
 
@@ -688,8 +745,14 @@ Reescreva a issue adicionando:
 
 Salve sobrescrevendo o arquivo da issue original.
 
-**Ao final:** emita a **recomendação de modelo** para o `/execute` desta issue (regra Model Advisor — respeite o `Model hint` do header da issue: Sonnet no padrão, Opus/Fable se o hint indicar) e instrua:
-> "Issue planejada. Faça `/clear` e inicie nova conversa com `/project-maker execute [caminho-da-issue]`."
+**Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o path real da issue enriquecida e o modelo vindo do `Model hint` do header (Sonnet no padrão, Opus/Fable se o hint indicar):
+> **▶ Próximo passo** — `/clear` primeiro, depois:
+> ```
+> /project-maker execute issues/prototype/01-pagina-login.md
+> ```
+> **Modelo:** Sonnet — issue especificada, execução mecânica.
+
+Se a issue faz parte de um sprint já planejado, o comando primário é o `/execute` do **sprint** (path completo) e o `/execute` da issue isolada vira a alternativa rotulada.
 
 ---
 
@@ -891,6 +954,27 @@ Se **não há remote** (projeto local), o `/ship` cai no fallback de merge local
 
 Se o Milestone Gate **não** passou: liste pendências, registre em STATE.md → Blockers, marque sprint como `⏸ pending-review` e aguarde instruções. Não encaminhe para ship.
 
+**Bloco de Handoff (obrigatório — regra Next Command).** Feche a resposta com o comando completo do próximo estágio do loop de fechamento, **path real resolvido**, nunca uma descrição do que rodar:
+
+> **▶ Próximo passo** — `/clear` primeiro, depois:
+> ```
+> /project-maker verify docs/sprints/SPRINT-031-resposta-por-whatsapp.md
+> ```
+> **Modelo:** Sonnet — UAT conduzido, sem raciocínio pesado.
+> **Depois:** `/secure` → `/ship`.
+
+Qual comando entra no bloco, por estado:
+
+| Estado ao fechar | Comando primário |
+|---|---|
+| Gate passou + sprint user-facing | `/project-maker verify [path do sprint]` |
+| Gate passou + não user-facing + toca auth/dados/input | `/project-maker secure [path do sprint]` |
+| Gate passou + verify/secure já limpos ou N/A | `/project-maker ship [path do sprint]` |
+| Gate passou + há próximo sprint e nada a fechar | `/project-maker execute [path do próximo sprint]` |
+| Gate **não** passou / blocker ativo | `/project-maker execute [path das issues de fix]` — comando de recuperação, não do próximo estágio |
+
+Cite na linha `**Depois:**` o resto da cadeia, para o usuário ver quantos passos faltam.
+
 ---
 
 ### Modo `--quick`: /execute em issue isolada
@@ -936,6 +1020,13 @@ UAT conduzido — confirma que o que foi construído **funciona da perspectiva d
 - Sem gaps abertos → `status: complete`, sprint pode seguir para `/secure`/`/ship`.
 - Com gaps abertos → registre em STATE.md → Blockers, sprint fica `⏸ pending-review`.
 
+**Bloco de Handoff (obrigatório — regra Next Command):**
+- Sem gaps + sprint toca auth/dados/input → `/project-maker secure [path real do sprint]`
+- Sem gaps + sem superfície de segurança → `/project-maker ship [path real do sprint]`
+- Com gaps → `/project-maker execute [path real das issues de fix]` (recuperação), e cite o re-verify como o passo seguinte
+
+Sempre com o path resolvido do disco, comando sozinho no bloco de código, linha `**Modelo:**` junto.
+
 **Quando NÃO rodar:** sprint só backend/migrations/refactor interno, bugfix pontual, `--quick` sem superfície de usuário. UAT **não substitui** o Milestone Gate — é complementar.
 
 ---
@@ -964,6 +1055,11 @@ Carregue as regras de **Segurança da `Constitution.md`** e o `steering/CONCERNS
 ### Passo 4 — Veredito
 - `clean` → libera o `/ship`.
 - `threats_open > 0` → **bloqueia o /ship**. Crie issues de fix (como no `/verify` Passo 3) ou registre em STATE.md → Blockers.
+
+**Bloco de Handoff (obrigatório — regra Next Command):**
+- `clean` → `/project-maker ship [path real do sprint]`
+- `threats_open > 0` → `/project-maker execute [path real das issues de fix]`, com nota de uma linha: o `/ship` fica bloqueado até `threats_open: 0`
+- `needs_human` → o bloco pede a revisão humana explícita **e** já traz o comando de retomada (`/project-maker secure [path]`) para depois dela
 
 **Quando rodar:** sempre que o sprint tocar auth, dados sensíveis, input externo, uploads, pagamentos, ou superfície de rede. Em `--quick`, só se a mudança toca uma dessas áreas.
 
@@ -1002,6 +1098,7 @@ Adicione `--draft` se o usuário pediu.
 - Pergunte (AskUserQuestion): pular review / self-review (mostre `url/files`) / pedir review de alguém (`gh pr edit N --add-reviewer`). Se a skill `code-review` está disponível, ofereça rodá-la no diff.
 - Atualize STATE.md: `Status → Sprint NNN shipped — PR #N`.
 - Reporte número e URL do PR + próximos passos (revisar, mergear quando CI passar).
+- **Bloco de Handoff (obrigatório — regra Next Command):** o comando primário é o próximo sprint com **path real** — `/project-maker execute docs/sprints/SPRINT-032-[slug real].md`. Se não há próximo sprint, o comando é `/project-maker break` (novo ciclo) ou `/project-maker pause`. Inclua, como alternativa rotulada, o comando de merge do PR (`gh pr merge N --squash`) quando a CI já estiver verde.
 
 ### Passo 5b — Fallback sem remote
 Sem origin: mostre `git diff main` consolidado, proponha `git checkout main && git merge sprint/[slug]`, aguarde confirmação. Registre no STATE.md.
@@ -1020,7 +1117,7 @@ Atalho que executa `/plan` seguido de `/execute` com transição de contexto ger
 2. **Safety valve:** antes de prosseguir para `/execute`, liste os passos atômicos inline. Se a lista revelar **>5 passos** ou **dependências complexas entre arquivos**, PARE: o ciclo plan→execute não cabe em uma sessão. Instrua o usuário a rodar `/break` para subdividir a issue e abortar o `/build`.
 3. Se a lista inline tiver ≤5 passos, continue diretamente para `/execute` sem exigir `/clear` manual — resuma o contexto internamente antes de prosseguir
 4. `/build` também segue integralmente as Harness Rules: ler STATE.md no início, rodar Gate Check (com Nyquist + Package Legitimacy), registrar Spec Deviations, atualizar STATE.md no final
-5. Ao concluir: se a issue é user-facing, ofereça `/verify`; se tocou segurança, ofereça `/secure`; se há remote, ofereça `/ship` (ou merge local no fallback)
+5. Ao concluir: emita o **Bloco de Handoff** (regra Next Command) com o comando completo do próximo estágio — `/project-maker verify [path real]` se user-facing, `/project-maker secure [path real]` se tocou segurança, `/project-maker ship [path real]` se há remote (ou o merge local no fallback). Como `/build` roda tudo numa sessão só, **omita a linha do `/clear`** se o próximo passo continua aqui; inclua se o próximo estágio pede sessão nova
 
 ---
 
@@ -1036,12 +1133,15 @@ Encerra a sessão atual de forma explícita, deixando `STATE.md` em condições 
    - `Active feature/issue`: path da issue/sprint em progresso
    - `Phase`: fase atual (spec | break | plan | execute | verify | secure | ship | review)
    - `Next action`: 1 linha objetiva do próximo passo
+   - `Next command`: comando completo e copiável, path real (o mesmo do Bloco de Handoff)
+   - `Next model`: tier/modelo recomendado para esse comando
    - `Files in progress`: lista de arquivos abertos/em edição
    - `Session handoff note`: 2-3 linhas explicando onde paramos e o que a próxima sessão precisa saber
 2. Se houver blockers ativos novos, adicione em `STATE.md → Blockers`
 3. Se o usuário passou uma nota como argumento, inclua-a no handoff note
 4. **Não faça commit automático.** Se há trabalho em progresso não-commitado, alerte o usuário e pergunte se quer commit WIP ou stash
 5. Resuma em 3-5 bullets para o usuário: onde parou, blockers ativos, próximo passo sugerido, arquivos em aberto
+6. Feche com o **Bloco de Handoff** (regra Next Command): o comando exato para retomar depois — `/project-maker resume` — **mais** o comando que virá em seguida, com path real, para a próxima sessão não precisar redescobrir. Grave esse mesmo comando no `Next command` do STATE.md
 
 ---
 
@@ -1052,7 +1152,7 @@ Encerra a sessão atual de forma explícita, deixando `STATE.md` em condições 
 Retoma o trabalho a partir do `STATE.md` da última sessão. É a forma correta de voltar a um projeto sem perder contexto.
 
 **Ações:**
-1. Leia `STATE.md` completo — especialmente `Current Session`, `Blockers`, `Lessons Learned` recentes
+1. Leia `STATE.md` completo — especialmente `Current Session` (incluindo `Next command` / `Next model`), `Blockers`, `Lessons Learned` recentes
 2. Leia `DECISIONS.md` (últimas entradas) e `KNOWLEDGE.md`
 3. Leia `Constitution.md` + `steering/` (base load)
 4. Leia `PRD.md` para saber status atual dos sprints
@@ -1062,8 +1162,14 @@ Retoma o trabalho a partir do `STATE.md` da última sessão. É a forma correta 
    - **O que falta**: [próximo passo + handoff note]
    - **Blockers ativos**: [lista ou "nenhum"]
    - **Arquivos relevantes**: [lista curta]
-   - **Próxima ação sugerida**: [comando concreto — ex: `/execute sprints/SPRINT-003-checkout.md`]
-7. Pergunte ao usuário:
+   - **Próxima ação sugerida**: veja o bloco abaixo
+7. Feche com o **Bloco de Handoff** (regra Next Command) — comando completo, path real resolvido do disco (confirme que o arquivo existe antes de citar), sem linha de `/clear` (o `/resume` já está na sessão nova):
+   > **▶ Próximo passo**
+   > ```
+   > /project-maker execute docs/sprints/SPRINT-003-checkout.md
+   > ```
+   > **Modelo:** Sonnet — orquestrador.
+8. Pergunte ao usuário:
    - "Quer continuar de onde paramos?" → prossiga
    - "Ou mudar de direção?" → escute e ajuste
 
