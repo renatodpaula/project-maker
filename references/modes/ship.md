@@ -33,7 +33,11 @@ Adicione `--draft` se o usuário pediu.
 - Pergunte (AskUserQuestion): pular review / self-review (mostre `url/files`) / pedir review de alguém (`gh pr edit N --add-reviewer`). Se a skill `code-review` está disponível, ofereça rodá-la no diff.
 - Atualize STATE.md: `Status → Sprint NNN shipped — PR #N`.
 - Reporte número e URL do PR + próximos passos (revisar, mergear quando CI passar).
-- **Bloco de Handoff (obrigatório — regra Next Command):** o comando primário é o próximo sprint com **path real** — `/project-maker execute docs/sprints/SPRINT-032-[slug real].md`. Se não há próximo sprint, o comando é `/project-maker break` (novo ciclo) ou `/project-maker pause`. Inclua, como alternativa rotulada, o comando de merge do PR (`gh pr merge N --squash`) quando a CI já estiver verde.
+- **Bloco de Handoff (obrigatório — regra Next Command):** o comando primário é o próximo sprint com **path real** — `/project-maker execute docs/sprints/SPRINT-032-[slug real].md`. Inclua, como alternativa rotulada, o comando de merge do PR (`gh pr merge N --squash`) quando a CI já estiver verde.
+  - **Se não há próximo sprint planejado, resolva o insumo no disco antes de emitir** (regra Next Command 9 — nunca emita o consumidor de um artefato que não existe):
+    - Existe **spec sem sprint** em `docs/specs/` (ou `Spec.md` na raiz não quebrada)? → `/project-maker break [path real da spec]`, com o argumento preenchido.
+    - Existe **backlog não agendado** no `PRD.md`? → `/project-maker break` (o Passo 0 do modo resolve para o backlog); cite na linha `**Depois:**` quantos itens estão lá.
+    - **Nenhum dos dois** → o ciclo acabou de verdade. Comando primário é `/project-maker spec feature "[nome]"` (ou `/project-maker discover` se a ideia é vaga), **não** `/break` — quebrar sem spec nem backlog trava a sessão seguinte. `/project-maker pause` fica como alternativa rotulada.
 
 ### Passo 5b — Fallback sem remote
 Sem origin: mostre `git diff main` consolidado, proponha `git checkout main && git merge sprint/[slug]`, aguarde confirmação. Registre no STATE.md.

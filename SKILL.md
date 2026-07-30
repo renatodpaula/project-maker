@@ -64,8 +64,10 @@ Workflow estruturado de Spec-Driven Development para construir projetos com IA s
 /init                → steering/ + Constitution.md +
                         STATE.md + DECISIONS.md + KNOWLEDGE.md  (Medium+)
 /spec [new|feature]  → Spec.md com EARS (+ context.md)         (Medium+)
-/break               → research.md + data-model.md + contracts/
+/break [spec]        → research.md + data-model.md + contracts/
                         + sprints/ + issues/ + PRD.md           (Large+)
+                       ↑ consome spec OU backlog do PRD — sem
+                         nenhum dos dois, o passo é /spec, não /break
 /plan [issue|sprint] → issue enriquecida                       (todos)
 /execute [sprint]    → orquestra: waves → implementer → validator
                         → reassess → milestone gate → PRD        (todos)
@@ -337,6 +339,8 @@ Regras do bloco:
 6. **Modelo entra no mesmo bloco.** A recomendação do Model Advisor é a linha `**Modelo:**` — não é uma seção separada nem um parágrafo antes.
 7. **Máx. 4 linhas de prosa** (Modelo, Ressalva, Depois, e no máximo uma nota). Bloco é operacional, não relatório. Ressalva só existe se houver `Model hint` fora do padrão.
 8. **Trigger explícito:** se o usuário perguntar "qual o comando?" / "e agora?" a qualquer momento, responda com o Bloco de Handoff do estado atual — leia STATE.md se precisar resolver o path.
+9. **O comando tem que ser executável agora, no disco como ele está.** Antes de emitir, verifique o **pré-requisito do modo seguinte**: se ele consome um artefato (`/break` consome spec ou backlog; `/execute` consome sprint/issue; `/verify` e `/secure` consomem sprint; `/ship` consome sprint fechado), esse artefato tem que existir **neste momento**. Se não existe, o comando primário é o que **cria** o artefato, não o que o consome — `/project-maker spec feature "[nome]"` em vez de `/break` quando não há spec nem backlog. Emitir o consumidor de um artefato inexistente trava a sessão seguinte e é bug do modo que emitiu.
+10. **Modo que aceita alvo sai com o alvo preenchido.** `/break`, `/plan`, `/execute`, `/verify`, `/secure`, `/ship` recebem path/nome. Emitir esses comandos "pelados" (sem argumento) só é aceitável quando o projeto tem exatamente **um** candidato possível no disco. Em projeto multi-spec/multi-sprint, comando pelado é o mesmo bug da regra 1 em outra forma — resolva o alvo (`ls`/Glob) antes de emitir.
 
 ### Stuck Detection
 

@@ -2,11 +2,24 @@
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 
-**Pré-requisito:** `Spec.md` deve existir na raiz. Leia `Constitution.md` e `steering/` se existirem.
+**Argumento:** caminho de uma spec (`docs/specs/FEAT-012-....md`), ou nada — neste caso o Passo 0 resolve o alvo.
+
+**Pré-requisito:** existir **alvo** — uma spec não quebrada ou backlog não agendado no `PRD.md`. Leia `Constitution.md` e `steering/` se existirem.
 
 **Paths:** este modo grava tudo no diretório canônico de artefatos (padrão `docs/` — regra **Localização canônica** das Harness Rules). Os paths abaixo usam o padrão; se `steering/structure.md` registrar outro diretório, use o registrado.
 
-Leia a Spec.md completa. Leia `references/issue-template.md` para o formato de issue.
+### Passo 0 — Resolver o alvo (obrigatório, antes de qualquer outro passo)
+
+Nunca comece a quebrar sem saber **o que** está quebrando. Ordem de precedência:
+
+1. **Argumento recebido** — use o path dado. Se não existir no disco, pare e reporte (não adivinhe spec parecida).
+2. **Spec sem sprint** — liste as specs do projeto (`docs/specs/*.md`, ou `Spec.md` na raiz em projeto single-feature) e cruze com o `PRD.md`: qual spec **não** tem sprint correspondente? Se há exatamente uma, é o alvo. Se há mais de uma, pergunte qual (`AskUserQuestion`) listando-as com o REQ count de cada.
+3. **Backlog não agendado do `PRD.md`** — a seção `### Backlog não agendado` (ou equivalente) com itens de tech debt/achados de review. Quebrar backlog em sprint é uso legítimo do modo: não gera `Spec.md`, os REQs viram os próprios itens do backlog, e o header de rastreabilidade das issues aponta para a origem do achado em vez de `REQ-N`.
+4. **Nada dos três** — **não fique perguntando o que fazer**. O projeto não tem trabalho pendente de decomposição; o próximo passo é **criar** o insumo. Pule direto para o Bloco de Handoff com `/project-maker spec feature "[nome]"` como comando primário (`/project-maker discover` se a ideia ainda é vaga), e diga em uma linha o que foi verificado: specs conferidas contra o PRD, backlog vazio.
+
+Só depois de fixar o alvo, siga para o Passo 1.
+
+Leia a spec-alvo completa (ou os itens do backlog). Leia `references/issue-template.md` para o formato de issue.
 
 **Passo 1 — research.md**
 Antes de quebrar em issues, gere `docs/research.md` com:

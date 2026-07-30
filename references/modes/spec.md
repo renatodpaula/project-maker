@@ -61,8 +61,10 @@ Se não existir `Constitution.md`, gere seguindo as mesmas instruções do `/ini
 **Ao final:** exiba resumo da spec, liste marcadores `[NEEDS CLARIFICATION]` restantes se houver, e feche com o **Bloco de Handoff** (regra Next Command) — comando completo + modelo na mesma caixa:
 > **▶ Próximo passo** — `/clear` primeiro, depois:
 > ```
-> /project-maker break
+> /project-maker break docs/specs/FEAT-012-prompt-caching-provider-agnostic.md
 > ```
 > **Modelo:** tier raciocínio (Opus/Fable) — pesquisa + decomposição é raciocínio puro.
+
+**O argumento é o path real da spec que você acabou de gravar** — nunca emita `/project-maker break` pelado (regra Next Command 10). Em projeto multi-spec, comando sem alvo faz a sessão seguinte abrir sem saber o que quebrar.
 
 Se restaram marcadores `[NEEDS CLARIFICATION]` sem resolver, o bloco muda: o comando primário passa a ser resolver os marcadores nesta sessão, e o `/break` vira a alternativa rotulada.
