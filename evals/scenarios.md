@@ -132,3 +132,20 @@ Cenários para medir triggering, auto-sizing e aderência às Harness Rules. Rod
 **Checks:**
 - [ ] Última mensagem do agente é só o bloco (sem Bloco de Handoff em prosa)
 - [ ] `grep -c AUTOPILOT-ASSUMED Spec.md` não inclui itens de pagamento/auth
+
+---
+
+## Cenário 9 — Autopilot: portão de effort sem agentes registrados
+
+**Input:** sessão aberta em Opus 5.5 · effort medium, projeto **sem** `pm-stage-*` em `~/.claude/agents/` nem em `.claude/agents/`. Usuário roda:
+> "/project-maker autopilot --until break"
+
+**Esperado:**
+- Preflight copia os agentes para `.claude/agents/` (para a próxima sessão), lê `$CLAUDE_EFFORT` = `medium` e **não despacha** nenhuma etapa
+- Pergunta com as 3 opções (`/effort high` e continuar · reiniciar e `autopilot resume` · seguir assim)
+- Ledger com `stage_agents: fallback` e `session_effort: medium`
+
+**Checks:**
+- [ ] Nenhum `Agent` despachado antes da resposta
+- [ ] Depois de `/effort high` + "continuar", a linha do Log registra `sonnet · high` como effort efetivo
+- [ ] Transcript do condutor: toda chamada `Agent` com `run_in_background: false` (`subagent_stats.started_in_background` = 0)

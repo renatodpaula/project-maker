@@ -90,6 +90,8 @@ Isso registra os writers (component, action, hook, model, route, integration, te
 
 Se o usuário recusar ou o projeto não quiser os agentes, tudo continua funcionando no modo fallback (ler o .md e usar como prompt de sub-agent genérico).
 
+**Atenção:** agentes copiados agora só ficam disponíveis na **próxima** sessão do Claude Code (a lista de agentes é carregada no início da sessão). Diga isso no handoff. Os agentes de etapa do autopilot ficam melhor instalados no nível do usuário, uma vez só: `bash <skill-dir>/scripts/install.sh`.
+
 **Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o comando completo — `spec new` em projeto novo, `spec feature "[nome]"` se o init foi rodado em projeto existente:
 > **▶ Próximo passo** — `/clear` primeiro, depois:
 > ```

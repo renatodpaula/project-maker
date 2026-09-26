@@ -6,7 +6,7 @@
 
 `discover → init → spec → break → plan → execute → verify → secure → ship`
 
-MIT License · v3.2 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
+MIT License · v3.2.1 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
 
 [English](#english) · [Português](#português)
 
@@ -165,9 +165,12 @@ Clone straight into your Claude Code skills directory:
 
 ```bash
 git clone https://github.com/renatodpaula/project-maker ~/.claude/skills/project-maker
+bash ~/.claude/skills/project-maker/scripts/install.sh   # installs the autopilot stage agents in ~/.claude/agents/
 ```
 
-Restart Claude Code, then use `/project-maker` in any project. To update later, run `git -C ~/.claude/skills/project-maker pull`.
+Restart Claude Code, then use `/project-maker` in any project. To update later, run `git -C ~/.claude/skills/project-maker pull` and then `install.sh` again.
+
+`install.sh` matters for the autopilot. Claude Code only loads agents when a session starts, so an agent copied mid-session isn't available. Without the stage agents, each stage would inherit your session's effort instead of the measured one. If they're missing, the autopilot stops before the first stage and asks.
 
 ### Usage
 
@@ -188,13 +191,18 @@ references/modes/           one playbook per mode (loaded on demand)
 references/autopilot/       stage contract, ledger template, hooks (guard + usage brake)
 references/agents/          writers, validator, stage agents (Claude Code frontmatter)
 references/*-template.md    artifact templates
-scripts/                    pm-guard.sh + its test suite
+scripts/                    install.sh (stage agents) · pm-guard.sh + its test suite
 evals/scenarios.md          skill self-test scenarios
 evals/model-bench/          model benchmark harness, hidden tests, results
 ```
 
 ### What's new
 
+- **v3.2.1**
+  - **Effort gate:** the autopilot never runs a stage at an unmeasured effort without asking.
+  - **`scripts/install.sh`** installs the stage agents at user level.
+  - **Effective effort** logged per stage.
+  - **Foreground dispatch** enforced in the call template.
 - **v3.2**
   - **Autopilot mode.** Opt-in; manual mode is unchanged.
   - **Measured model routing** with the `econ | balanced | max` profiles.
@@ -369,9 +377,12 @@ Clone direto na pasta de skills do Claude Code:
 
 ```bash
 git clone https://github.com/renatodpaula/project-maker ~/.claude/skills/project-maker
+bash ~/.claude/skills/project-maker/scripts/install.sh   # instala os agentes de etapa do autopilot em ~/.claude/agents/
 ```
 
-Reinicie o Claude Code e use `/project-maker` em qualquer projeto. Para atualizar depois, rode `git -C ~/.claude/skills/project-maker pull`.
+Reinicie o Claude Code e use `/project-maker` em qualquer projeto. Para atualizar depois, rode `git -C ~/.claude/skills/project-maker pull` e depois o `install.sh` de novo.
+
+O `install.sh` importa para o autopilot. O Claude Code só carrega agentes quando a sessão começa, então agente copiado no meio da sessão não fica disponível. Sem os agentes de etapa, cada etapa herdaria o effort da sua sessão em vez do effort medido. Se eles faltarem, o autopilot para antes da primeira etapa e pergunta.
 
 ### Uso
 
@@ -392,13 +403,18 @@ references/modes/           um playbook por modo (carregado sob demanda)
 references/autopilot/       contrato de etapa, template do ledger, hooks (guard + freio de uso)
 references/agents/          writers, validator, agentes de etapa (frontmatter Claude Code)
 references/*-template.md    templates dos artefatos
-scripts/                    pm-guard.sh + suíte de testes
+scripts/                    install.sh (agentes de etapa) · pm-guard.sh + suíte de testes
 evals/scenarios.md          cenários de auto-teste do skill
 evals/model-bench/          harness do benchmark de modelos, testes ocultos, resultados
 ```
 
 ### Novidades
 
+- **v3.2.1**
+  - **Portão de effort:** o autopilot nunca roda uma etapa num effort não medido sem perguntar.
+  - **`scripts/install.sh`** instala os agentes de etapa no nível do usuário.
+  - **Effort efetivo** registrado por etapa.
+  - **Despacho em foreground** forçado no template da chamada.
 - **v3.2**
   - **Modo autopilot.** Opt-in; o modo manual não muda.
   - **Roteamento de modelo medido,** com os perfis `econ | balanced | max`.

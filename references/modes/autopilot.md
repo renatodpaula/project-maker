@@ -27,7 +27,12 @@ L0 CONDUTOR  = esta sessão. Única que fala com você (AskUserQuestion, PushNot
 
 1. **Ferramentas:** carregue `PushNotification` se estiver deferred (`ToolSearch select:PushNotification`).
 2. **Git:** repositório com ≥1 commit (se não, ofereça `git init` + commit inicial e pare até confirmar). Crie `.pm-autopilot/` e garanta em `.git/info/exclude` as linhas `.pm-autopilot/`, `.claude/agents/pm-stage-*.md` e `.claude/hooks/pm-guard.sh` — arquivos do condutor não sujam a árvore nem quebram o sensor de árvore limpa.
-3. **Agentes de etapa:** confira `.claude/agents/pm-stage-workhorse.md` e `pm-stage-reasoning.md`. Se faltarem, copie de `references/agents/` do skill (sem sobrescrever). Agente copiado agora pode só ficar disponível na próxima sessão — se o `subagent_type` não for reconhecido, use o **fallback** `subagent_type: general-purpose` + `model` da tabela (o effort herda o da sessão; avise uma vez).
+3. **Agentes de etapa + portão de effort (antes do primeiro despacho):**
+   - O Claude Code só carrega agentes **quando a sessão começa** (verificado no 2.1.282: agente copiado no meio da sessão dá `Agent type '…' not found`). Procure `pm-stage-workhorse.md`/`pm-stage-reasoning.md` em `~/.claude/agents/` (instalados por `scripts/install.sh`) ou em `.claude/agents/` do projeto (instalados pelo `/init`). **Registrados** = o arquivo existia antes desta sessão (mtime anterior ao início do run); na dúvida, teste com um despacho mínimo.
+   - Leia o effort da sessão: `echo $CLAUDE_EFFORT`.
+   - **Registrados** → siga; o effort vem do frontmatter do agente.
+   - **Não registrados** (ausentes, ou copiados agora — copie para `.claude/agents/` sem sobrescrever, para a próxima sessão) → o fallback `subagent_type: general-purpose` + `model` herda o effort da sessão. Se `$CLAUDE_EFFORT` = effort da tabela para a etapa (`high` no balanced), siga com o fallback. Se for diferente, **não despache**: pergunte com `AskUserQuestion` — "Rode `/effort high` e diga continuar (Recomendado)" · "Reinicie o Claude Code e rode `/project-maker autopilot resume` (agentes passam a valer)" · "Seguir assim (effort <atual>, não medido)". Nunca rode etapa num effort diferente do da tabela sem o usuário escolher isso.
+   - Antes de **cada** despacho em fallback, releia `$CLAUDE_EFFORT` (o usuário pode ter mudado com `/effort`).
 4. **Freio de janela (opt-in):** se `~/.claude/pm-usage.json` não existe, ofereça uma vez o bloco da statusline de `references/autopilot/hooks.md` (§ Medidor da janela de uso). Sem ele o run não tem como pausar antes de estourar a janela de 5h — diga isso em uma linha.
 5. **Guard (opt-in):** se `.claude/hooks/pm-guard.sh` não está registrado, ofereça a instalação de `references/autopilot/hooks.md` (precisa de `jq`: `command -v jq`). Grave `guard: on|off` no ledger. Sem guard, as proibições do Stage Contract valem só por instrução — diga isso em uma linha.
 6. **Run existente:** se `.pm-autopilot/ledger.md` existe com `status` ≠ `done`, isto é uma **retomada**: execute o subcomando `resume` (abaixo) antes de qualquer despacho — nunca herde silenciosamente a política de push/PR de outra sessão.
@@ -66,7 +71,11 @@ Repita até uma condição de parada (Passo 3):
 3. **Freio de janela:** se existir `~/.claude/pm-usage.json` (opt-in, `references/autopilot/hooks.md`) com `updated_at` de menos de 15 min, leia `five_hour.used_percentage` (`jq -r '.five_hour.used_percentage' ~/.claude/pm-usage.json`). Passou do limiar do perfil → **não despache**: `status: paused` e diga o horário do reset (`date -r $(jq -r '.five_hour.resets_at' ~/.claude/pm-usage.json) +%H:%M`). Arquivo mais velho que 15 min = leitura desconhecida; siga sem o freio e avise uma vez. Antes de um `execute`, exija também folga para ele (tabela **Consumo medido** do Model Advisor).
 4. **Roteie** pela tabela **Roteamento por etapa** do Model Advisor (SKILL.md), coluna do `profile`: `subagent_type` do agente de etapa e, quando a célula pede, `model` por chamada. O `next_model` do bloco anterior é só informativo — a tabela vence.
 5. **Grave `in_flight`** `{stage, target, ts}` no ledger **antes** de despachar.
-6. **Despache** o agente de etapa com `run_in_background: false` e o template abaixo.
+6. **Despache** o agente de etapa em **foreground** — a chamada tem sempre este formato, sem exceção:
+   ```
+   Agent(subagent_type: "pm-stage-workhorse", description: "Etapa <modo>", run_in_background: false, prompt: <template abaixo>)
+   ```
+   (`model: "<x>"` só quando a célula da tabela pede override.) O condutor precisa do bloco para decidir o próximo passo — etapa em background deixa o condutor sem resultado e, em sessão headless, pode perder o agente.
 7. **Valide o retorno** — o condutor não confia no relato; confere com sensores de 1 linha:
    - o bloco `PM_STAGE_RESULT` existe e tem as chaves obrigatórias;
    - `next` bate com a linha `Next command` do STATE.md (`sed -n 's/.*Next command\*\*: *`\(.*\)`.*/\1/p' STATE.md`);
@@ -75,7 +84,7 @@ Repita até uma condição de parada (Passo 3):
    - `execute`/`verify`/`secure` com `done` → `git status --porcelain | wc -l` = 0;
    - `done` com decisão `blocking ≠ none` → trate como `needs_user`.
    Sensor falhou → despache **um** agente novo da mesma etapa com "Retomada: o sensor <nome> falhou: <saída de 1 linha>; corrija no disco e reemita o bloco". Falhou de novo → pare e mostre ao usuário o `summary` e a saída do sensor.
-8. **Registre:** uma linha no Log do ledger (etapa, alvo, agente/modelo, status, summary, `<usage>` de tokens), `in_flight: null`, `counters.stages += 1`. `extra.sprints` do break vai para `sprints` do ledger.
+8. **Registre:** uma linha no Log do ledger (etapa, alvo, agente, **modelo · effort efetivo** — o do frontmatter se o agente está registrado, o `$CLAUDE_EFFORT` lido antes do despacho se foi fallback —, status, summary, `<usage>` de tokens), `in_flight: null`, `counters.stages += 1`. `extra.sprints` do break vai para `sprints` do ledger.
 9. **Aja pelo status** (a menos que o item 2 tenha fixado o cursor):
 
 | status | decisões | ação |

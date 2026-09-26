@@ -6,6 +6,8 @@ scope_root: Spec.md        # o que este run está autorizado a construir (spec o
 profile: balanced          # econ | balanced | max
 until: sprint              # spec | break | sprint | all
 guard: off                 # on | off — pm-guard.sh instalado?
+stage_agents: registered   # registered | fallback — agentes de etapa carregados nesta sessão?
+session_effort: high       # $CLAUDE_EFFORT no preflight (relido antes de cada despacho em fallback)
 policies:
   ship: ask                # draft-auto | ask | local
   uat: per-sprint          # per-sprint | auto-only
@@ -29,5 +31,5 @@ heartbeat: YYYY-MM-DD HH:MM
 
 ## Log
 
-| # | hora | etapa | alvo | modelo/effort | status | resumo | tokens |
-|---|------|-------|------|---------------|--------|--------|--------|
+| # | hora | etapa | alvo | agente | modelo · effort efetivo | status | resumo | tokens |
+|---|------|-------|------|--------|-------------------------|--------|--------|--------|
