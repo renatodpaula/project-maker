@@ -1,6 +1,7 @@
 # Modo: /secure
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `secure` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Argumento:** caminho de um sprint (ou issue em `--quick`).
 
@@ -8,7 +9,7 @@ Gate de segurança escopado ao **diff do sprint**, não ao codebase inteiro. Rod
 
 ### Passo 1 — Escopo
 ```bash
-git diff main...sprint/[slug] --stat
+git diff [base]...sprint/[slug] --stat   # base = main, ou o branch do sprint anterior em PRs empilhados
 ```
 Carregue as regras de **Segurança da `Constitution.md`** e o `steering/CONCERNS.md` se o diff toca área flagged.
 
@@ -22,6 +23,7 @@ Carregue as regras de **Segurança da `Constitution.md`** e o `steering/CONCERNS
 - Itens que exigem julgamento humano → `needs_human`, peça revisão explícita.
 
 ### Passo 4 — Veredito
+- Commit do SECURITY: `docs(SPRINT-NNN): security` (a árvore termina limpa).
 - `clean` → libera o `/ship`.
 - `threats_open > 0` → **bloqueia o /ship**. Crie issues de fix (como no `/verify` Passo 3) ou registre em STATE.md → Blockers.
 

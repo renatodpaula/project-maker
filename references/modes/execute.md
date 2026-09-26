@@ -1,6 +1,7 @@
 # Modo: /execute
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `execute` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Argumento:** caminho de um **sprint** (`docs/sprints/SPRINT-NNN-[slug].md`) ou, em modo `--quick`, de uma issue isolada.
 
@@ -36,21 +37,27 @@
 - Leia `docs/data-model.md` e contratos relevantes em `docs/contracts/` se o sprint envolver dados/APIs
 - Para cada issue do sprint, verifique se está enriquecida (tem seção "Arquivos a criar"). Se alguma não estiver, instrua a rodar `/plan` para ela antes de continuar
 - **Se qualquer issue do sprint tocar arquivo/área em `steering/CONCERNS.md`**, carregue o CONCERNS
-- **Model Advisor / Routing:** varra o campo `Model hint` das issues do sprint. Se alguma tem hint `Opus/Fable`: (a) se o Agent tool da sessão suporta override de `model`, informe que essas issues serão despachadas em tier de raciocínio automaticamente e siga; (b) se não suporta, avise: "issues X, Y são raciocínio/prompt-heavy — considere trocar de modelo para essas". Não bloqueia (regra Model Advisor).
+- **Model Advisor / Routing:** varra o campo `Model hint` das issues do sprint. Se alguma tem hint `Opus/Fable`: (a) se o Agent tool da sessão suporta override de `model`, informe que essas issues serão despachadas com o `model` da linha "issue com Model hint" da tabela Roteamento por etapa (balanced `opus`, max `fable`, econ sem override) e siga; (b) se não suporta, avise: "issues X, Y são raciocínio/prompt-heavy — considere trocar de modelo para essas". Não bloqueia (regra Model Advisor).
 
 Marque o sprint como `🔄 in-progress` no PRD.md e no próprio sprint.md.
 
 ### Passo 1 — Branch isolada do sprint
 
 ```bash
-git checkout -b sprint/[slug-do-sprint]
+git checkout sprint/[slug-do-sprint] 2>/dev/null || git checkout -b sprint/[slug-do-sprint]
 ```
+
+Se a branch já existe (sessão anterior interrompida), **reuse-a** — nunca recrie. Logo após o checkout, se houver artefatos de planejamento ainda não commitados (`Spec.md`, `context.md`, `PRD.md`, `docs/`), commite-os primeiro: `docs(SPRINT-NNN): planning`.
+
+**Retomada idempotente:** antes de despachar qualquer issue, pule as já entregues — `✅` no PRD/sprint **ou** commit `feat(SPRINT-NNN/<slug-da-issue>)` no `git log`. Diff sujo de uma issue interrompida conta como tentativa 1 dela.
 
 Todas as issues do sprint são commitadas nesta mesma branch (1 commit por issue), fechando o sprint com um merge único em main ao final.
 
 ### Passo 2 — Loop de implementação por wave
 
 Leia a seção `## Waves` do sprint.md. Execute **wave por wave**, na ordem do DAG. Dentro de uma wave, dispare um sub-agent por issue **em paralelo** (issues `[P]` que não colidem em arquivo). A wave seguinte só começa quando todas as issues da anterior fecharam.
+
+**Como paralelizar (regra Despacho em foreground):** todos os implementers da wave numa **única mensagem**, cada chamada Agent com `run_in_background: false`; quando voltarem, todos os validators da wave numa única mensagem, também em foreground. Nunca termine o turno esperando notificação de agente em background — em `claude -p` e dentro de agente de etapa isso mata os sub-agents pendentes.
 
 > **Parallel Write Safety:** dentro da wave, sub-agents implementam e retornam resultado, mas **só o orquestrador** escreve em STATE/PRD/DECISIONS/KNOWLEDGE, serializando ao fim da wave (ver Harness Rules). Sub-agent nunca edita living doc direto.
 
@@ -85,7 +92,7 @@ Escolha o agente conforme o tipo de arquivo da issue:
 1. **Agente registrado** — se o agente existe em `.claude/agents/` do projeto (instalado pelo `/init` Passo 4), dispare via `subagent_type` com o nome da tabela. O frontmatter cuida de tools e model default.
 2. **Fallback** — leia `references/agents/[nome].md` do skill e use o conteúdo como prompt de um sub-agent genérico.
 
-**Model Routing (regra Model Advisor):** se a issue tem `Model hint: Opus/Fable` e o Agent tool suporta override de `model`, passe `model: opus` no dispatch **desta issue**. Hint `Sonnet` ou ausente → não passe override (herda o default). Vale para os dois modos de dispatch. O override por chamada **vence** o `model:` do frontmatter do agente registrado — passar `model: opus` num agente com `model: sonnet` funciona.
+**Model Routing (regra Model Advisor):** se a issue tem `Model hint: Opus/Fable` e o Agent tool suporta override de `model`, passe no dispatch **desta issue** o `model` da linha "issue com Model hint" da tabela Roteamento por etapa (balanced `opus`, max `fable`, econ sem override). Hint `Sonnet` ou ausente → não passe override (herda o default). Vale para os dois modos de dispatch. O override por chamada **vence** o `model:` do frontmatter do agente registrado — passar `model: opus` num agente com `model: sonnet` funciona.
 
 **Contexto que o implementer recebe** (regras de Sub-Agent Delegation):
 - A issue completa (Descrição, Cenários, Done when, Tests, Gate, Arquivos a criar/modificar, Padrões)
@@ -176,6 +183,8 @@ Dispare UAT interativo **apenas** se o sprint entrega uma feature user-facing co
 - Sprint é um bugfix pontual
 - Escopo é `--quick`
 
+**Com `--autopilot`:** pule este passo (não dispare o `/verify` daqui) e siga para o Passo 5 — o condutor roda o verify como etapa própria, respeitando a política de UAT do run; se o verify achar gaps, é ele que volta o sprint para `⏸ pending-review`.
+
 **Fluxo:** dispare o modo `/verify` (ver `references/modes/verify.md`) passando o sprint atual. Ele gera o UAT resumível (`docs/sprints/SPRINT-NNN-uat.md`), injeta o cold-start smoke test quando aplicável, conduz o teste um a um, e — se houver gaps — roda o loop diagnose→fix→re-verify. Em `--quick`, gere o uat ao lado da issue.
 
 - Se `/verify` retorna **sem gaps** → prossiga para Passo 5.
@@ -189,6 +198,7 @@ Se o Milestone Gate passou:
 
 - Marque sprint como `✅ done` em PRD.md e sprint.md (preencha `Fechado em`)
 - Atualize STATE.md (current → próximo sprint, blockers limpos)
+- Commit dos living docs do fechamento: `chore(SPRINT-NNN): close` — a árvore termina limpa
 - Encaminhe para o **loop de fechamento**, na ordem aplicável:
   1. `/verify [sprint]` — se o sprint é user-facing (já disparado no Passo 4.5; se pulou lá, é aqui)
   2. `/secure [sprint]` — se o sprint tocou auth, dados, input externo ou superfície de rede

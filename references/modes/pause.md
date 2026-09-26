@@ -6,6 +6,8 @@
 
 Encerra a sessão atual de forma explícita, deixando `STATE.md` em condições de ser retomado por outra sessão sem perder contexto.
 
+**Run de autopilot ativo:** se existir `.pm-autopilot/ledger.md` com `status: running`, só crie `.pm-autopilot/STOP` — o agente de etapa em curso termina a unidade atual e para, e o **condutor** grava `status: paused` quando ele voltar (não mude o ledger daqui: com um agente ainda rodando, o guard precisa continuar ativo).
+
 **Ações:**
 1. Atualize `STATE.md → Current Session`:
    - `Last updated`: timestamp agora

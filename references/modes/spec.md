@@ -1,6 +1,7 @@
 # Modo: /spec
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `spec` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Argumentos:** `new` (projeto do zero) ou `feature` (em projeto existente)
 
@@ -63,7 +64,7 @@ Se não existir `Constitution.md`, gere seguindo as mesmas instruções do `/ini
 > ```
 > /project-maker break docs/specs/FEAT-012-prompt-caching-provider-agnostic.md
 > ```
-> **Modelo:** tier raciocínio (Opus/Fable) — pesquisa + decomposição é raciocínio puro.
+> **Modelo:** Sonnet 5 · effort high — 88,5/100 no break a 1/3 do custo do Fable (91,5, só no perfil max); Opus 5.5 · medium se velocidade importa mais.
 
 **O argumento é o path real da spec que você acabou de gravar** — nunca emita `/project-maker break` pelado (regra Next Command 10). Em projeto multi-spec, comando sem alvo faz a sessão seguinte abrir sem saber o que quebrar.
 

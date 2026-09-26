@@ -6,7 +6,7 @@
 
 `discover → init → spec → break → plan → execute → verify → secure → ship`
 
-MIT License · v3.1 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai)
+MIT License · v3.2 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai)
 
 [English](#english) · [Português](#português)
 
@@ -62,7 +62,7 @@ Complexity decides depth, not the other way around. The skill auto-sizes:
 - **Resumable UAT** — user testing one step at a time, survives `/clear`, auto-injects a **cold-start smoke test**, and runs a diagnose → fix → re-verify loop when issues are found.
 - **Security gate** — `/secure` reviews the sprint diff (delegating to the `security-review` skill when available) and blocks `/ship` if threats are open.
 - **Nyquist rule** — every acceptance criterion needs an automated sensor; if the test doesn't exist, creating it is the first sub-task.
-- **Model Advisor + Routing** — at each mode handoff (before `/clear`), the skill recommends which model to open the next session in: reasoning tier (Opus/Fable) for `/spec` and `/break`, workhorse (Sonnet) for `/execute`. `/break` tags each issue with a `Model hint`; inside `/execute`, prompt-engineering-heavy issues are auto-dispatched to the reasoning tier via per-agent model override — no session switching needed.
+- **Measured Model Advisor** — the model *and effort* for each stage come from a benchmark (every mode run for real on a frozen fixture, blind judges, hidden tests, planted vulnerabilities/bugs — see `evals/model-bench/`). Default (`balanced`): **Sonnet 5 · high** everywhere; `max` uses Fable 5.1 on break and Opus 5.5 xhigh on init; `econ` never escalates. `/break` tags each issue with a `Model hint`; inside `/execute`, flagged issues are auto-dispatched to a stronger model via per-agent override.
 - **Handoff Block** — every mode ends with the **complete next command**, real path resolved from disk (`/project-maker execute docs/sprints/SPRINT-031-whatsapp-reply.md`, never a `[placeholder]`), in a copy-paste code block, with the model recommendation in the same box. You never have to ask "what's the command now?". The command is also written to `STATE.md → Next command`, so it survives `/clear`.
 - **Native registered agents** — `/init` installs the skill's specialized agents (writers + validator) into the project's `.claude/agents/`, making them real Claude Code subagents: tool restrictions enforced by the harness (the validator has no Write/Edit — direct file edits are blocked; it keeps Bash to run gate commands) and per-agent default models.
 - **Living docs** — `STATE.md` (volatile), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (cross-sprint lessons), `PRD.md` (living product doc).
@@ -88,6 +88,16 @@ Restart Claude Code, then use `/project-maker` in any project.
 ```
 
 The skill detects which stage you're in and explains the next step. Or jump straight to a mode: `/project-maker spec`, `/project-maker execute docs/sprints/SPRINT-001-auth.md`, etc.
+
+**Autopilot (opt-in):** `/project-maker autopilot --until sprint --profile balanced` — your session becomes a conductor that runs each stage in a fresh sub-agent (no manual `/clear`), with the right model per stage, and only stops when it needs you. `/project-maker autopilot status | stop | resume`.
+
+### What's new in v3.2
+
+- **Autopilot mode** (`/project-maker autopilot`, opt-in) — the session becomes a conductor: one fresh-context sub-agent per stage, model/effort routed per stage, a status block (`PM_STAGE_RESULT`) validated by 1-line sensors, and a ledger (`.pm-autopilot/`) that survives `/clear`, compaction and usage-limit resets (`autopilot resume`). It stops only for real decisions, batched into two screens: start (how far, push/PR, UAT, cost profile) and post-break (packages, secrets, risky assumptions). Push/PR are run only by the conductor; an optional `PreToolUse` guard (`scripts/pm-guard.sh`) blocks push/PR/destructive git from sub-agents at the harness level. Manual mode is unchanged and remains the default. Tested end-to-end: break → plan → execute (nested implementer/validator) → verify → secure → ship-prep, with two interruptions and resumes.
+- **Measured model routing** — a benchmark of every stage across Fable 5.1, Opus 5.5 (xhigh/medium), Sonnet 5 and Haiku 4.5 replaced the old intuition. Sonnet 5 · high was 1st or 2nd on every stage at the lowest cost among the models that got it right; effort mattered more than model; Haiku fabricated "done" markers. Profiles `econ | balanced | max`, stage agents with `model` + `effort` frontmatter, and a per-stage consumption table (≈% of a 5h usage window).
+- **Foreground dispatch** — sub-agents are dispatched with `run_in_background: false` (parallel = several calls in one message). The benchmark caught a headless `/execute` losing 5 background sub-agents when the orchestrator ended its turn.
+- **Idempotent `/execute`** — reuses an existing sprint branch, skips already-delivered issues, commits planning and closing docs so the tree ends clean.
+- **Usage-window brake** — with a one-line statusline opt-in, the autopilot reads your 5h-window usage and pauses before exhausting it.
 
 ### What's new in v3.1
 
@@ -154,7 +164,7 @@ A complexidade decide a profundidade, não o contrário. A skill se auto-dimensi
 - **UAT resumível** — teste do usuário um passo por vez, sobrevive a `/clear`, injeta automaticamente um **cold-start smoke test** e roda um loop diagnose → fix → re-verify quando acha problema.
 - **Gate de segurança** — `/secure` revisa o diff do sprint (delegando à skill `security-review` quando disponível) e bloqueia o `/ship` se houver ameaça aberta.
 - **Regra Nyquist** — todo critério de aceitação precisa de um sensor automático; se o teste não existe, criá-lo é a primeira sub-task.
-- **Model Advisor + Routing** — em cada handoff de modo (antes do `/clear`), o skill recomenda em qual modelo abrir a próxima sessão: tier de raciocínio (Opus/Fable) para `/spec` e `/break`, workhorse (Sonnet) para `/execute`. O `/break` marca cada issue com um `Model hint`; dentro do `/execute`, issues prompt-engineering-heavy são despachadas automaticamente no tier de raciocínio via override de modelo por agente — sem trocar de sessão.
+- **Model Advisor medido** — o modelo *e o effort* de cada etapa vêm de um benchmark (cada modo rodado de verdade sobre um insumo congelado, juízes cegos, testes ocultos, vulnerabilidades e bugs plantados — ver `evals/model-bench/`). Padrão (`balanced`): **Sonnet 5 · high** em tudo; `max` usa Fable 5.1 no break e Opus 5.5 xhigh no init; `econ` nunca escala. O `/break` marca cada issue com um `Model hint`; dentro do `/execute`, as issues marcadas são despachadas num modelo mais forte via override por agente.
 - **Bloco de Handoff** — todo modo termina com o **comando completo do próximo passo**, path real resolvido do disco (`/project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md`, nunca um `[placeholder]`), num bloco de código pronto pra copiar, com a recomendação de modelo na mesma caixa. Você nunca precisa perguntar "qual o comando agora?". O comando também é gravado em `STATE.md → Next command`, então sobrevive ao `/clear`.
 - **Agentes nativos registrados** — o `/init` instala os agentes especializados do skill (writers + validator) em `.claude/agents/` do projeto, tornando-os subagentes reais do Claude Code: restrição de ferramentas garantida pelo harness (o validator não tem Write/Edit — edits diretos de arquivo ficam bloqueados; ele mantém Bash para rodar o Gate) e modelo default por agente.
 - **Living docs** — `STATE.md` (volátil), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (lições cross-sprint), `PRD.md` (documento vivo do produto).
@@ -180,6 +190,16 @@ Reinicie o Claude Code e use `/project-maker` em qualquer projeto.
 ```
 
 A skill detecta em qual etapa você está e explica o próximo passo. Ou vá direto a um modo: `/project-maker spec`, `/project-maker execute docs/sprints/SPRINT-001-auth.md`, etc.
+
+**Autopilot (opt-in):** `/project-maker autopilot --until sprint --profile balanced` — sua sessão vira um condutor que roda cada etapa num sub-agente com contexto limpo (sem `/clear` manual), com o modelo certo por etapa, e só para quando precisa de você. `/project-maker autopilot status | stop | resume`.
+
+### Novidades da v3.2
+
+- **Modo autopilot** (`/project-maker autopilot`, opt-in) — a sessão vira condutor: um sub-agente com contexto limpo por etapa, modelo/effort roteados por etapa, um bloco de status (`PM_STAGE_RESULT`) validado por sensores de 1 linha, e um ledger (`.pm-autopilot/`) que sobrevive a `/clear`, compactação e reset do limite de uso (`autopilot resume`). Só para em decisão real, concentrada em duas telas: início (até onde, push/PR, UAT, perfil de custo) e pós-break (pacotes, segredos, suposições de risco). Push/PR só pelo condutor; um guard `PreToolUse` opcional (`scripts/pm-guard.sh`) bloqueia push/PR/git destrutivo de sub-agentes no harness. O modo manual não muda e continua o padrão. Testado ponta a ponta: break → plan → execute (implementer/validator aninhados) → verify → secure → ship-prep, com duas interrupções e retomadas.
+- **Roteamento de modelo medido** — um benchmark de todas as etapas com Fable 5.1, Opus 5.5 (xhigh/medium), Sonnet 5 e Haiku 4.5 substituiu a intuição. Sonnet 5 · high ficou em 1º ou 2º em todas as etapas pelo menor custo entre os que acertam; o effort pesou mais que o modelo; o Haiku fabricou marcações de "feito". Perfis `econ | balanced | max`, agentes de etapa com `model` + `effort` no frontmatter, e tabela de consumo por etapa (≈% da janela de 5h).
+- **Despacho em foreground** — sub-agents saem com `run_in_background: false` (paralelo = várias chamadas numa mensagem). O benchmark pegou um `/execute` headless perdendo 5 sub-agents em background quando o orquestrador encerrou o turno.
+- **`/execute` idempotente** — reusa o branch do sprint, pula issues já entregues, commita planning e fechamento para a árvore terminar limpa.
+- **Freio da janela de uso** — com um opt-in de 1 linha na statusline, o autopilot lê o uso da janela de 5h e pausa antes de estourar.
 
 ### Novidades da v3.1
 

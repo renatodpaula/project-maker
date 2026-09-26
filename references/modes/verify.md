@@ -1,6 +1,7 @@
 # Modo: /verify
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `verify` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Argumento:** caminho de um sprint (`docs/sprints/SPRINT-NNN-[slug].md`) ou de uma issue em `--quick`.
 
@@ -31,6 +32,7 @@ UAT conduzido — confirma que o que foi construído **funciona da perspectiva d
 
 ### Passo 4 — Fechar
 - Sem gaps abertos → `status: complete`, sprint pode seguir para `/secure`/`/ship`.
+- Commit do UAT: `docs(SPRINT-NNN): verify` (a árvore termina limpa).
 - Com gaps abertos → registre em STATE.md → Blockers, sprint fica `⏸ pending-review`.
 
 **Bloco de Handoff (obrigatório — regra Next Command):**
