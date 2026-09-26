@@ -315,6 +315,16 @@ Células = `modelo · effort`. **balanced** é o padrão do modo manual e do aut
 ³ No manual, Haiku 4.5 fez um ship aceitável ($0,22 vs $0,33) — só no ship. No autopilot, nunca Haiku (o auto mode de permissões não suporta Haiku).
 ⁴ Fable achou as mesmas 5/5 vulnerabilidades a 7× o custo.
 
+#### Como escolher o perfil
+
+Perfil (`econ | balanced | max`) **não** é o effort do Claude Code (low…max). Ele define três coisas: o modelo/effort de cada etapa (tabela acima), se issue com `Model hint: Opus/Fable` escala, e os freios de consumo do autopilot.
+
+- **econ** — mesmo modelo do balanced (Sonnet · high): o benchmark não achou modelo mais barato que preste (o Haiku fabricou progresso). A economia vem de **não escalar** issue difícil, **pausar em 60%** da janela de 5h (sobra folga para outros trabalhos) e parar em 12 etapas por run (~1 sprint). Use com janela apertada.
+- **balanced** (padrão) — qualidade de topo pelo menor custo medido; escala para Opus 5.5 só nas raras issues marcadas. Use no dia a dia.
+- **max** — gasta onde o benchmark mediu ganho, que é pequeno: Fable no break (+3 pontos a 2,7× o custo) e Opus xhigh no init (95 vs 89 a ~5×); ~+$7 por projeto. Use quando a qualidade do planejamento vale o custo.
+
+Projeto de 3 sprints ponta a ponta: econ ~$33 (1 janela, em 2 blocos por pausar em 60%) · balanced ~$33–36 (~1 janela) · max ~$40–43 (~1,2 janela). O execute de um sprint custa ~20% da janela em qualquer perfil. No autopilot o perfil vem de `--profile` ou da tela T0; no manual, a linha **Modelo:** segue o balanced — para max, troque o modelo antes do `/break`.
+
 **Velocidade em vez de custo:** Opus 5.5 · medium no `/break` e no `/execute` (mesma qualidade no execute, ~35% mais rápido no break, ~2× o preço por token). Não use no `/spec`.
 
 **Nunca:** Haiku em discover, init, spec, break, plan ou execute. Opus em xhigh como padrão — se o seu `modelSettings` deixa Opus em xhigh, rode `/effort medium` ou `high` ao trocar para ele.

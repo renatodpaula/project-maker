@@ -96,6 +96,18 @@ The skill detects which stage you're in and explains the next step. Or jump stra
 2. **Push/PR guard** — copy `scripts/pm-guard.sh` to `.claude/hooks/` and register it as a `PreToolUse` Bash hook in `.claude/settings.local.json` (needs `jq`). Sub-agents can't push, open PRs or run destructive git; test with `bash scripts/test-pm-guard.sh`.
 3. **Permissions** — use auto mode or `acceptEdits` + an allowlist so a permission prompt doesn't stall a long run.
 
+**Cost profiles** (`--profile`, not the same as Claude Code's effort levels):
+
+| | econ | balanced (default) | max |
+|---|---|---|---|
+| Model per stage | Sonnet 5 · high everywhere | Sonnet 5 · high everywhere | Fable 5.1 on break, Opus 5.5 xhigh on init, Sonnet elsewhere |
+| Issue with `Model hint: Opus/Fable` | not escalated | Opus 5.5 · high | Fable 5.1 · high |
+| Autopilot pauses at 5h-window usage | 60% | 80% | 90% |
+| Autopilot max stages per run | 12 | 30 | 60 |
+| 3-sprint project, end to end | ~$33, split in 2 blocks | ~$33–36, ~1 window | ~$40–43, ~1.2 windows |
+
+`econ` saves by not escalating and by stopping early (headroom for other work), not by using a weaker model — the benchmark found none worth it. `max` buys a small measured gain (+3 points on break at 2.7× cost). Use `balanced` day to day.
+
 ### What's new in v3.2
 
 - **Autopilot mode** (`/project-maker autopilot`, opt-in) — the session becomes a conductor: one fresh-context sub-agent per stage, model/effort routed per stage, a status block (`PM_STAGE_RESULT`) validated by 1-line sensors, and a ledger (`.pm-autopilot/`) that survives `/clear`, compaction and usage-limit resets (`autopilot resume`). It stops only for real decisions, batched into two screens: start (how far, push/PR, UAT, cost profile) and post-break (packages, secrets, risky assumptions). Push/PR are run only by the conductor; an optional `PreToolUse` guard (`scripts/pm-guard.sh`) blocks push/PR/destructive git from sub-agents at the harness level. Manual mode is unchanged and remains the default. Tested end-to-end: break → plan → execute (nested implementer/validator) → verify → secure → ship-prep, with two interruptions and resumes.
@@ -202,6 +214,18 @@ A skill detecta em qual etapa você está e explica o próximo passo. Ou vá dir
 1. **Freio da janela de uso** — acrescente ao script da sua statusline o bloco de *§ Medidor da janela de uso*. Ele grava `~/.claude/pm-usage.json` (`used_percentage` e `resets_at` de `five_hour`/`seven_day`), e o condutor pausa antes de uma etapa quando você passa do limiar do perfil (econ 60% · balanced 80% · max 90%), em vez de a etapa morrer no meio ao bater o limite.
 2. **Guard de push/PR** — copie `scripts/pm-guard.sh` para `.claude/hooks/` e registre como hook `PreToolUse` de Bash em `.claude/settings.local.json` (precisa de `jq`). Sub-agentes não conseguem dar push, abrir PR nem rodar git destrutivo; teste com `bash scripts/test-pm-guard.sh`.
 3. **Permissões** — use auto mode ou `acceptEdits` + allowlist, para um prompt de permissão não travar um run longo.
+
+**Perfis de custo** (`--profile` — não é o mesmo que o effort do Claude Code):
+
+| | econ | balanced (padrão) | max |
+|---|---|---|---|
+| Modelo por etapa | Sonnet 5 · high em tudo | Sonnet 5 · high em tudo | Fable 5.1 no break, Opus 5.5 xhigh no init, Sonnet no resto |
+| Issue com `Model hint: Opus/Fable` | não escala | Opus 5.5 · high | Fable 5.1 · high |
+| Autopilot pausa com a janela de 5h em | 60% | 80% | 90% |
+| Autopilot: máx. de etapas por run | 12 | 30 | 60 |
+| Projeto de 3 sprints, ponta a ponta | ~$33, em 2 blocos | ~$33–36, ~1 janela | ~$40–43, ~1,2 janela |
+
+O `econ` economiza por não escalar e por parar mais cedo (folga para outros trabalhos), não por usar modelo mais fraco — o benchmark não achou nenhum que valesse. O `max` compra um ganho pequeno e medido (+3 pontos no break a 2,7× o custo). No dia a dia, `balanced`.
 
 ### Novidades da v3.2
 
