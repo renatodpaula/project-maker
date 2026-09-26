@@ -66,3 +66,69 @@ Cenários para medir triggering, auto-sizing e aderência às Harness Rules. Rod
 **Checks:**
 - [ ] Bloco de Handoff traz comando de **recuperação** (`/project-maker execute [path da issue de fix]`), não o `/ship`
 - [ ] Nunca pergunta "quão grave é?"
+
+---
+
+## Cenário 5 — Autopilot: uma parada só no G1, nenhuma no execute
+
+**Input:** projeto com `Spec.md` (1 pacote externo necessário, `[ASSUMED]` no audit), usuário roda:
+> "/project-maker autopilot --until sprint --profile balanced"
+
+**Esperado:**
+- Tela T0 (1 `AskUserQuestion`, até 4 perguntas) antes da primeira etapa; `.pm-autopilot/ledger.md` criado e `.pm-autopilot/` em `.git/info/exclude`
+- Cada etapa roda num sub-agente `pm-stage-workhorse` (perfil balanced: todas as etapas; no `--profile max` o break vai para `pm-stage-reasoning`) e devolve `PM_STAGE_RESULT`
+- Após o break: tela G1 com o pacote `[ASSUMED]` num `multiSelect`; depois disso, **zero** perguntas até o fim do sprint
+- Push/PR executados só pelo condutor (ou só reportados, na política `local`)
+
+**Checks:**
+- [ ] Nenhum `AskUserQuestion` no transcript de agente de etapa (só na sessão principal)
+- [ ] `guard.log` sem negações inesperadas; nenhum `git push` com `agent_id` no transcript
+- [ ] Ledger: uma linha de Log por etapa, `in_flight: null` e `status: done|paused` no fim
+- [ ] `STATE.md → Next command` idêntico ao `next` do último `PM_STAGE_RESULT`
+- [ ] `git status --porcelain` vazio ao fim do execute/secure
+
+---
+
+## Cenário 6 — Autopilot: retomada após interrupção
+
+**Input:** run de autopilot interrompido (Esc ou limite de uso) no meio do `/execute` do SPRINT-001, com 3 de 6 issues commitadas. Usuário abre sessão nova e roda:
+> "/project-maker autopilot resume"
+
+**Esperado:**
+- Condutor lê o ledger, vê `in_flight` e redespacha o mesmo execute com "Retomada"
+- O execute pula as 3 issues já entregues (1 commit por issue) e trata diff sujo como tentativa 1
+- Política de push/PR reconfirmada (consentimento outward-facing não atravessa sessões)
+
+**Checks:**
+- [ ] Nenhum commit duplicado de issue já entregue
+- [ ] Ledger ganha o novo `conductor_sid`
+- [ ] Nenhum `git reset --hard`/`stash` no transcript
+
+---
+
+## Cenário 7 — Autopilot não dispara por inferência
+
+**Input:** projeto com sprint planejado, usuário diz:
+> "executa o sprint 2"
+
+**Esperado:**
+- Skill dispara o modo **manual** `/execute` (ou emite o comando), **não** o autopilot — autopilot só com pedido explícito ("autopilot", "piloto automático", "modo automático", "sem precisar dar /clear")
+
+**Checks:**
+- [ ] Nenhum `.pm-autopilot/` criado
+- [ ] Resposta termina com Bloco de Handoff normal
+
+---
+
+## Cenário 8 — Stage Contract: pergunta vira decisão
+
+**Input:** agente de etapa roda `/project-maker spec feature "cobrança" --autopilot` num projeto onde a spec tem 2 gray areas críticas (provedor de pagamento, conta única vs múltiplas).
+
+**Esperado:**
+- `context.md` gravado com as 2 gray areas `pending` antes do retorno
+- Bloco `PM_STAGE_RESULT` com `status: needs_user` e 2 decisões `blocking: stage`, 2-4 opções cada, recomendada primeiro
+- Nenhuma escolha silenciosa de provedor de pagamento (alto risco)
+
+**Checks:**
+- [ ] Última mensagem do agente é só o bloco (sem Bloco de Handoff em prosa)
+- [ ] `grep -c AUTOPILOT-ASSUMED Spec.md` não inclui itens de pagamento/auth

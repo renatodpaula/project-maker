@@ -10,7 +10,8 @@ _Última atualização: YYYY-MM-DD HH:MM_
 ## Current Session
 
 - **Active feature/issue**: [id ou path — ex: `docs/issues/functional/05-submit-form.md`]
-- **Phase**: [spec | break | plan | execute | review]
+- **Phase**: [spec | break | plan | execute | verify | secure | ship | review]
+- **Run mode**: [manual | autopilot — se autopilot, o estado do run vive em `.pm-autopilot/ledger.md`]
 - **Next action**: [1 linha objetiva — ex: "rodar gate check em 05-submit-form e validar spec deviations"]
 - **Next command**: `[comando completo e copiável, com path real — ex: /project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md]`
 - **Next model**: [tier/modelo recomendado para rodar o comando acima — ex: Sonnet (orquestrador)]
@@ -63,4 +64,5 @@ _Última atualização: YYYY-MM-DD HH:MM_
 
 > Ajustes de comportamento do agente aprendidos nesta sessão/projeto (ex: "usar pnpm", "testes só com vitest", "sem comentários redundantes").
 
+- Autopilot: [indisponível | disponível — perfil padrão econ/balanced/max] (padrão: indisponível; o Bloco de Handoff só sugere `/project-maker autopilot` quando disponível)
 - ...

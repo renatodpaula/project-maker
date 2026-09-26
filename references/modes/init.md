@@ -1,6 +1,7 @@
 # Modo: /init
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `init` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Quando usar:** `--epic`. Cria o memory bank do projeto antes da spec.
 
@@ -82,7 +83,7 @@ Copie os agentes de `references/agents/` do skill para `.claude/agents/` do proj
 mkdir -p .claude/agents && cp [skill-dir]/references/agents/*.md .claude/agents/
 ```
 
-Isso registra os writers (component, action, hook, model, route, integration, test) e o validator como **agentes nativos do Claude Code**. Efeitos:
+Isso registra os writers (component, action, hook, model, route, integration, test), o validator e os dois agentes de etapa do autopilot (`pm-stage-reasoning`, `pm-stage-workhorse`) como **agentes nativos do Claude Code**. Efeitos:
 - O `/execute` pode despachar via `subagent_type` (ex: `component-writer`) em vez de colar o .md como prompt
 - O frontmatter passa a valer de verdade: `tools:` restringe ferramentas por harness (o validator **não tem** Write/Edit — edits diretos ficam bloqueados pelo harness; ele mantém Bash para rodar o Gate, então o shell ainda pode escrever arquivo — para endurecer de verdade, restrinja o Bash do validator a comandos de teste nas permission rules do projeto) e `model:` define o modelo default do agente
 - Se já existir um agente com o mesmo nome em `.claude/agents/`, **não sobrescreva** — avise e pule
@@ -94,4 +95,4 @@ Se o usuário recusar ou o projeto não quiser os agentes, tudo continua funcion
 > ```
 > /project-maker spec new
 > ```
-> **Modelo:** tier raciocínio (Opus/Fable) — captura de requisitos define tudo downstream.
+> **Modelo:** Sonnet 5 · effort high — o mais fiel às respostas na captura de requisitos; Fable 5.1 só no perfil max. Evite Opus em effort medium no spec (perdeu fidelidade no benchmark).

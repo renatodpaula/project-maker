@@ -1,6 +1,7 @@
 # Modo: /break
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `break` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Argumento:** caminho de uma spec (`docs/specs/FEAT-012-....md`), ou nada — neste caso o Passo 0 resolve o alvo.
 

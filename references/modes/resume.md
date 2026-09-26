@@ -6,6 +6,8 @@
 
 Retoma o trabalho a partir do `STATE.md` da última sessão. É a forma correta de voltar a um projeto sem perder contexto.
 
+**Run de autopilot ativo:** se existir `.pm-autopilot/ledger.md` com `status` ∈ {`running`, `waiting_user`, `paused`} **e** `STATE.md → Run mode: autopilot`, o comando primário do Bloco de Handoff é `/project-maker autopilot resume` (cite quantas decisões estão pendentes no inbox do ledger) e o comando manual do `STATE.md` vira a alternativa rotulada. Em qualquer outro caso (ledger `failed`/`done`, ou Run mode manual), o primário é o manual e o autopilot aparece no máximo como alternativa. "Continuar" sem citar o autopilot pelo nome roda o comando **manual**.
+
 **Ações:**
 1. Leia `STATE.md` completo — especialmente `Current Session` (incluindo `Next command` / `Next model`), `Blockers`, `Lessons Learned` recentes
 2. Leia `DECISIONS.md` (últimas entradas) e `KNOWLEDGE.md`

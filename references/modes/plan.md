@@ -1,8 +1,9 @@
 # Modo: /plan
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `plan` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Argumento:** caminho ou nome da issue (ex: `docs/issues/prototype/01-pagina-login.md`)
+**Argumento:** caminho ou nome da issue (ex: `docs/issues/prototype/01-pagina-login.md`), **ou** caminho de um sprint (`docs/sprints/SPRINT-NNN-[slug].md`) — nesse caso, rode os Passos 1-3 para cada issue do sprint que ainda não tem `## Arquivos a criar` preenchido, pulando as já enriquecidas, e faça a pesquisa externa (Passo 2) uma vez para o sprint todo.
 
 Leia `Constitution.md` e `steering/` se existirem — definem restrições que devem ser respeitadas no plano.
 Leia `docs/data-model.md` e o contrato relevante em `docs/contracts/` se existirem.
@@ -27,7 +28,7 @@ Reescreva a issue adicionando:
 
 Salve sobrescrevendo o arquivo da issue original.
 
-**Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o path real da issue enriquecida e o modelo vindo do `Model hint` do header (Sonnet no padrão, Opus/Fable se o hint indicar):
+**Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o path real da issue enriquecida e o modelo da sessão de execute (Sonnet 5 · high no padrão — ver Model Advisor); se o `Model hint` do header for `Opus/Fable`, cite na linha `**Ressalva:**` que essa issue é roteada automaticamente:
 > **▶ Próximo passo** — `/clear` primeiro, depois:
 > ```
 > /project-maker execute docs/issues/prototype/01-pagina-login.md

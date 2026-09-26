@@ -1,6 +1,7 @@
 # Modo: /discover
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `discover` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Quando usar:** `--epic`. O usuário tem uma ideia mas ainda não sabe exatamente o que construir.
 
@@ -24,4 +25,4 @@ Ao gerar o `brief.md`:
 > ```
 > /project-maker init
 > ```
-> **Modelo:** tier raciocínio (Opus/Fable) — `/init` define steering e Constitution.
+> **Modelo:** Sonnet 5 · effort high (`/model sonnet`) — venceu o init no custo-benefício; Opus 5.5 · xhigh só no perfil max.

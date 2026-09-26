@@ -1,6 +1,7 @@
 # Modo: /ship
 
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
+> **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `ship` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
 **Argumento:** caminho de um sprint (ou `milestone vX.Y` ao fechar milestone).
 
