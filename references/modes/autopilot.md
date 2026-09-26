@@ -28,14 +28,15 @@ L0 CONDUTOR  = esta sessão. Única que fala com você (AskUserQuestion, PushNot
 1. **Ferramentas:** carregue `PushNotification` se estiver deferred (`ToolSearch select:PushNotification`).
 2. **Git:** repositório com ≥1 commit (se não, ofereça `git init` + commit inicial e pare até confirmar). Crie `.pm-autopilot/` e garanta em `.git/info/exclude` as linhas `.pm-autopilot/`, `.claude/agents/pm-stage-*.md` e `.claude/hooks/pm-guard.sh` — arquivos do condutor não sujam a árvore nem quebram o sensor de árvore limpa.
 3. **Agentes de etapa:** confira `.claude/agents/pm-stage-workhorse.md` e `pm-stage-reasoning.md`. Se faltarem, copie de `references/agents/` do skill (sem sobrescrever). Agente copiado agora pode só ficar disponível na próxima sessão — se o `subagent_type` não for reconhecido, use o **fallback** `subagent_type: general-purpose` + `model` da tabela (o effort herda o da sessão; avise uma vez).
-4. **Guard (opt-in):** se `.claude/hooks/pm-guard.sh` não está registrado, ofereça a instalação de `references/autopilot/hooks.md` (precisa de `jq`: `command -v jq`). Grave `guard: on|off` no ledger. Sem guard, as proibições do Stage Contract valem só por instrução — diga isso em uma linha.
-5. **Run existente:** se `.pm-autopilot/ledger.md` existe com `status` ≠ `done`, isto é uma **retomada**: execute o subcomando `resume` (abaixo) antes de qualquer despacho — nunca herde silenciosamente a política de push/PR de outra sessão.
-6. **Cursor inicial** (nesta ordem):
+4. **Freio de janela (opt-in):** se `~/.claude/pm-usage.json` não existe, ofereça uma vez o bloco da statusline de `references/autopilot/hooks.md` (§ Medidor da janela de uso). Sem ele o run não tem como pausar antes de estourar a janela de 5h — diga isso em uma linha.
+5. **Guard (opt-in):** se `.claude/hooks/pm-guard.sh` não está registrado, ofereça a instalação de `references/autopilot/hooks.md` (precisa de `jq`: `command -v jq`). Grave `guard: on|off` no ledger. Sem guard, as proibições do Stage Contract valem só por instrução — diga isso em uma linha.
+6. **Run existente:** se `.pm-autopilot/ledger.md` existe com `status` ≠ `done`, isto é uma **retomada**: execute o subcomando `resume` (abaixo) antes de qualquer despacho — nunca herde silenciosamente a política de push/PR de outra sessão.
+7. **Cursor inicial** (nesta ordem):
    - argumento `alvo` recebido → o modo que consome esse alvo;
    - `STATE.md → Next command`, se existir e o path existir no disco;
    - `Spec.md`/spec sem sprint → `break`; `steering/` sem spec → `spec new` (ou `spec feature`); `brief.md` sem steering → `init`; nada → **discover inline** (Passo 1b).
-7. **Escopo do run (`scope_root`):** grave no ledger o que este run está autorizado a construir — o path da spec, ou `brief.md` se começa antes da spec. Tudo que deriva dele (discover → init → spec → break → sprints dessa spec) é o mesmo escopo.
-8. **Aviso de modelo do condutor (1x):** o condutor não precisa de raciocínio pesado. Se a sessão está em Opus/Fable com effort alto, diga em uma linha: "o condutor roda bem em Sonnet (`/model sonnet`); as etapas usam o modelo delas de qualquer jeito".
+8. **Escopo do run (`scope_root`):** grave no ledger o que este run está autorizado a construir — o path da spec, ou `brief.md` se começa antes da spec. Tudo que deriva dele (discover → init → spec → break → sprints dessa spec) é o mesmo escopo.
+9. **Aviso de modelo do condutor (1x):** o condutor não precisa de raciocínio pesado. Se a sessão está em Opus/Fable com effort alto, diga em uma linha: "o condutor roda bem em Sonnet (`/model sonnet`); as etapas usam o modelo delas de qualquer jeito".
 
 ## Passo 1 — Tela T0 (uma vez, antes de qualquer etapa)
 
@@ -62,7 +63,7 @@ Repita até uma condição de parada (Passo 3):
 2. **Resolva a etapa** a partir do `cursor` (`/project-maker <modo> <alvo>`).
    - Se o cursor é `execute <sprint>` e o sprint **não** está em `planned` no ledger: esta iteração despacha `plan <sprint>`. Ao validar o `done`, acrescente o sprint a `planned` e **mantenha** `cursor = execute <sprint>` (ignore o `next` do plan). Na iteração seguinte sai o execute. Sem isso o loop roda plan para sempre.
    - Base do branch: o sprint parte de `main`, a menos que dependa (`depends_on` em `sprints` do ledger) de um sprint cujo PR ainda não foi mergeado — aí parte do branch desse sprint (PRs empilhados). Passe `base=<branch>` no prompt de **todas** as etapas do sprint (execute, secure, ship). Se o sprint depende de um sprint **bloqueado**, pule para o próximo sprint independente da lista; sem nenhum, pare.
-3. **Freio de janela:** se existir `~/.claude/pm-usage.json` (opt-in, `references/autopilot/hooks.md`), leia `five_hour.used_percentage`. Passou do limiar do perfil → **não despache**: `status: paused` e diga o horário de `five_hour.resets_at`. Antes de um `execute`, exija também folga para ele (tabela **Consumo medido** do Model Advisor).
+3. **Freio de janela:** se existir `~/.claude/pm-usage.json` (opt-in, `references/autopilot/hooks.md`) com `updated_at` de menos de 15 min, leia `five_hour.used_percentage` (`jq -r '.five_hour.used_percentage' ~/.claude/pm-usage.json`). Passou do limiar do perfil → **não despache**: `status: paused` e diga o horário do reset (`date -r $(jq -r '.five_hour.resets_at' ~/.claude/pm-usage.json) +%H:%M`). Arquivo mais velho que 15 min = leitura desconhecida; siga sem o freio e avise uma vez. Antes de um `execute`, exija também folga para ele (tabela **Consumo medido** do Model Advisor).
 4. **Roteie** pela tabela **Roteamento por etapa** do Model Advisor (SKILL.md), coluna do `profile`: `subagent_type` do agente de etapa e, quando a célula pede, `model` por chamada. O `next_model` do bloco anterior é só informativo — a tabela vence.
 5. **Grave `in_flight`** `{stage, target, ts}` no ledger **antes** de despachar.
 6. **Despache** o agente de etapa com `run_in_background: false` e o template abaixo.

@@ -91,6 +91,11 @@ The skill detects which stage you're in and explains the next step. Or jump stra
 
 **Autopilot (opt-in):** `/project-maker autopilot --until sprint --profile balanced` — your session becomes a conductor that runs each stage in a fresh sub-agent (no manual `/clear`), with the right model per stage, and only stops when it needs you. `/project-maker autopilot status | stop | resume`.
 
+**Autopilot setup (optional, once per machine/project)** — details in `references/autopilot/hooks.md`:
+1. **Usage-window brake** — add the block from *§ Medidor da janela de uso* to your statusline script. It writes `~/.claude/pm-usage.json` (`five_hour`/`seven_day` `used_percentage` + `resets_at`), and the conductor pauses before a stage when you pass the profile threshold (econ 60% · balanced 80% · max 90%) instead of dying mid-stage at the limit.
+2. **Push/PR guard** — copy `scripts/pm-guard.sh` to `.claude/hooks/` and register it as a `PreToolUse` Bash hook in `.claude/settings.local.json` (needs `jq`). Sub-agents can't push, open PRs or run destructive git; test with `bash scripts/test-pm-guard.sh`.
+3. **Permissions** — use auto mode or `acceptEdits` + an allowlist so a permission prompt doesn't stall a long run.
+
 ### What's new in v3.2
 
 - **Autopilot mode** (`/project-maker autopilot`, opt-in) — the session becomes a conductor: one fresh-context sub-agent per stage, model/effort routed per stage, a status block (`PM_STAGE_RESULT`) validated by 1-line sensors, and a ledger (`.pm-autopilot/`) that survives `/clear`, compaction and usage-limit resets (`autopilot resume`). It stops only for real decisions, batched into two screens: start (how far, push/PR, UAT, cost profile) and post-break (packages, secrets, risky assumptions). Push/PR are run only by the conductor; an optional `PreToolUse` guard (`scripts/pm-guard.sh`) blocks push/PR/destructive git from sub-agents at the harness level. Manual mode is unchanged and remains the default. Tested end-to-end: break → plan → execute (nested implementer/validator) → verify → secure → ship-prep, with two interruptions and resumes.
@@ -192,6 +197,11 @@ Reinicie o Claude Code e use `/project-maker` em qualquer projeto.
 A skill detecta em qual etapa você está e explica o próximo passo. Ou vá direto a um modo: `/project-maker spec`, `/project-maker execute docs/sprints/SPRINT-001-auth.md`, etc.
 
 **Autopilot (opt-in):** `/project-maker autopilot --until sprint --profile balanced` — sua sessão vira um condutor que roda cada etapa num sub-agente com contexto limpo (sem `/clear` manual), com o modelo certo por etapa, e só para quando precisa de você. `/project-maker autopilot status | stop | resume`.
+
+**Setup do autopilot (opcional, uma vez por máquina/projeto)** — detalhes em `references/autopilot/hooks.md`:
+1. **Freio da janela de uso** — acrescente ao script da sua statusline o bloco de *§ Medidor da janela de uso*. Ele grava `~/.claude/pm-usage.json` (`used_percentage` e `resets_at` de `five_hour`/`seven_day`), e o condutor pausa antes de uma etapa quando você passa do limiar do perfil (econ 60% · balanced 80% · max 90%), em vez de a etapa morrer no meio ao bater o limite.
+2. **Guard de push/PR** — copie `scripts/pm-guard.sh` para `.claude/hooks/` e registre como hook `PreToolUse` de Bash em `.claude/settings.local.json` (precisa de `jq`). Sub-agentes não conseguem dar push, abrir PR nem rodar git destrutivo; teste com `bash scripts/test-pm-guard.sh`.
+3. **Permissões** — use auto mode ou `acceptEdits` + allowlist, para um prompt de permissão não travar um run longo.
 
 ### Novidades da v3.2
 

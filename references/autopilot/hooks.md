@@ -35,15 +35,30 @@ Em `.claude/settings.local.json`, faça o merge (não sobrescreva hooks existent
 
 ## Medidor da janela de uso (statusline → arquivo)
 
-O Claude Code entrega à **statusline** o uso do plano: `.rate_limits.five_hour.used_percentage`, `.rate_limits.five_hour.resets_at`, `.rate_limits.seven_day.*`. O condutor do autopilot não recebe isso diretamente — mas se a sua statusline gravar esse trecho num arquivo, ele lê antes de cada etapa e **pausa antes de estourar a janela** (em vez de a etapa morrer no meio com "You've hit your session limit").
+O Claude Code entrega à **statusline** o uso do plano em `.rate_limits.five_hour` e `.rate_limits.seven_day`, cada um com `used_percentage` (0–100) e `resets_at` (epoch em segundos). O condutor do autopilot não recebe isso diretamente. Se a sua statusline gravar esse trecho num arquivo, o condutor lê o arquivo antes de cada etapa e **pausa antes de estourar a janela**, em vez de a etapa morrer no meio com "You've hit your session limit".
 
-Acrescente ao seu script de statusline (ele já recebe o JSON em stdin, aqui como `$input`):
+Acrescente ao seu script de statusline, depois da linha que lê o stdin (`input=$(cat)`). O bloco usa `jq`:
 
 ```bash
-echo "$input" | jq -c '.rate_limits // empty' > ~/.claude/pm-usage.json 2>/dev/null
+# --- project-maker autopilot: grava o uso do plano para o freio de janela ---
+if echo "$input" | jq -e '.rate_limits.five_hour' >/dev/null 2>&1; then
+  _pm_usage="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/pm-usage.json"
+  echo "$input" | jq -c --arg now "$(date +%s)" '.rate_limits + {updated_at: ($now | tonumber)}' \
+    > "$_pm_usage.tmp.$$" 2>/dev/null && mv -f "$_pm_usage.tmp.$$" "$_pm_usage" || rm -f "$_pm_usage.tmp.$$"
+fi
 ```
 
-Sem o arquivo, o autopilot segue sem esse freio (os tetos de etapas do perfil continuam valendo).
+- **Escrita atômica** (tmp + `mv`): várias sessões rodam a statusline em paralelo.
+- **Só grava quando o JSON traz `rate_limits`.** Sessões sem essa informação (ex.: chave de API) não apagam a última leitura boa.
+- **`updated_at`** é o epoch da gravação. O condutor ignora o arquivo se ele tiver mais de 15 min, porque a leitura pode ser de uma janela que já resetou.
+
+Sem o arquivo, o autopilot segue sem esse freio (os tetos de etapas do perfil continuam valendo). O preflight do autopilot oferece este passo uma vez.
+
+Exemplo do arquivo gravado:
+
+```json
+{"five_hour":{"used_percentage":47.2,"resets_at":1790409000},"seven_day":{"used_percentage":36,"resets_at":1790607600},"updated_at":1790429042}
+```
 
 ## Permissões
 
