@@ -97,4 +97,4 @@ Se o usuário recusar ou o projeto não quiser os agentes, tudo continua funcion
 > ```
 > /project-maker spec new
 > ```
-> **Modelo:** Sonnet 5 · effort high — o mais fiel às respostas na captura de requisitos; Fable 5.1 só no perfil max. Evite Opus em effort medium no spec (perdeu fidelidade no benchmark).
+> **Modelo:** Sonnet · effort high — o mais fiel às respostas na captura de requisitos; Fable 5.1 só no perfil max. Evite Opus em effort medium no spec (perdeu fidelidade no benchmark).

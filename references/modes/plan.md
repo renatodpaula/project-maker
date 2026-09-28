@@ -28,7 +28,7 @@ Reescreva a issue adicionando:
 
 Salve sobrescrevendo o arquivo da issue original.
 
-**Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o path real da issue enriquecida e o modelo da sessão de execute (Sonnet 5 · high no padrão — ver Model Advisor); se o `Model hint` do header for `Opus/Fable`, cite na linha `**Ressalva:**` que essa issue é roteada automaticamente:
+**Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o path real da issue enriquecida e o modelo da sessão de execute (Sonnet · high no padrão — ver Model Advisor); se o `Model hint` do header for `Opus/Fable`, cite na linha `**Ressalva:**` que essa issue é roteada automaticamente:
 > **▶ Próximo passo** — `/clear` primeiro, depois:
 > ```
 > /project-maker execute docs/issues/prototype/01-pagina-login.md

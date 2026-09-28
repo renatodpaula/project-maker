@@ -70,7 +70,7 @@ Complexity decides depth, not the other way around. The skill sizes itself autom
 /project-maker autopilot status | stop | resume
 ```
 
-- **Conductor + stage agents.** Your session dispatches one sub-agent per stage (`pm-stage-workhorse` = Sonnet 5 · high; `pm-stage-reasoning` = Fable 5.1 · high in `max`). Each has `model` and `effort` in its frontmatter. The sub-agent runs the mode with `--autopilot` and returns a short status block (`PM_STAGE_RESULT`). The conductor checks that block with one-line sensors (the path exists, the tree is clean, `next` matches `STATE.md`) instead of trusting it.
+- **Conductor + stage agents.** Your session dispatches one sub-agent per stage (`pm-stage-workhorse` = Sonnet · high; `pm-stage-reasoning` = Fable · high in `max`). Each has `model` and `effort` in its frontmatter. The sub-agent runs the mode with `--autopilot` and returns a short status block (`PM_STAGE_RESULT`). The conductor checks that block with one-line sensors (the path exists, the tree is clean, `next` matches `STATE.md`) instead of trusting it.
 - **It only stops for you, in two batched screens.**
   - **T0, at the start:** how far to go, push/PR policy, UAT policy, and cost profile.
   - **G1, after `/break`:** suspicious packages, required secrets, and high-risk assumptions.
@@ -282,7 +282,7 @@ A complexidade decide a profundidade, não o contrário. A skill se dimensiona s
 /project-maker autopilot status | stop | resume
 ```
 
-- **Condutor + agentes de etapa.** Sua sessão despacha um sub-agente por etapa (`pm-stage-workhorse` = Sonnet 5 · high; `pm-stage-reasoning` = Fable 5.1 · high no `max`). Cada um tem `model` e `effort` no frontmatter. O sub-agente roda o modo com `--autopilot` e devolve um bloco curto de status (`PM_STAGE_RESULT`). Em vez de confiar nesse bloco, o condutor confere com sensores de 1 linha (o path existe, a árvore está limpa, o `next` bate com o `STATE.md`).
+- **Condutor + agentes de etapa.** Sua sessão despacha um sub-agente por etapa (`pm-stage-workhorse` = Sonnet · high; `pm-stage-reasoning` = Fable · high no `max`). Cada um tem `model` e `effort` no frontmatter. O sub-agente roda o modo com `--autopilot` e devolve um bloco curto de status (`PM_STAGE_RESULT`). Em vez de confiar nesse bloco, o condutor confere com sensores de 1 linha (o path existe, a árvore está limpa, o `next` bate com o `STATE.md`).
 - **Só para por você, em duas telas.**
   - **T0, no início:** até onde ir, política de push/PR, política de UAT e perfil de custo.
   - **G1, depois do `/break`:** pacotes suspeitos, segredos exigidos e suposições de alto risco.

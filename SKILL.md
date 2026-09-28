@@ -287,6 +287,8 @@ Checar disponibilidade é barato — se o skill não está instalado, só contin
 
 Cada etapa tem um perfil de trabalho diferente, e rodar o modelo certo muda custo, tempo e qualidade. A recomendação abaixo é **medida, não intuída**: benchmark de 2026-09 (Claude Code 2.1.282) rodando cada modo do skill em 5 configurações sobre o mesmo insumo congelado, com 3 juízes cegos por etapa, testes de aceitação ocultos no `/execute`, 5 vulnerabilidades plantadas no `/secure` e 2 bugs plantados no `/verify`. Método e harness em `evals/model-bench/`. Nomes de modelo mudam — quando sair modelo novo, **remeça** em vez de supor.
 
+**Versão do modelo:** o skill usa os aliases `sonnet`, `opus` e `fable` (frontmatter dos agentes e override por chamada), que o Claude Code resolve para a versão mais recente — modelo novo entra sem editar nada aqui. Os textos de recomendação dizem só "Sonnet"/"Opus"/"Fable"; os números de versão (Sonnet 5, Opus 5.5, Fable 5.1) aparecem apenas nos **resultados do benchmark**, que valem para a versão medida. Versão nova não medida herda o perfil por analogia até alguém remedir (`evals/model-bench/`).
+
 **O que o benchmark mostrou:**
 - **Sonnet 5 · effort high** ficou em 1º ou 2º em todas as etapas, pelo menor custo entre os que acertam: spec 90,7/100 (Fable 88,8 na média de 2 runs — 92,9 e 84,6 —, a 4,5× o custo), break 88,5 (Fable 91,5 a 2,7×), execute 88/88 testes ocultos (empate com Opus), secure 5/5 vulnerabilidades (empate) pela metade do custo do Opus e 1/7 do Fable, verify 2/2 bugs com causa-raiz exata.
 - **Effort pesa mais que o modelo.** Opus 5.5 em xhigh custou 2–3× e levou 3–5× mais tempo que em medium, sem ganho consistente (só venceu no init: 95 vs 89 do Sonnet).
@@ -344,7 +346,7 @@ Projeto de 3 sprints ponta a ponta: econ ~$33 (1 janela, em 2 blocos por pausar 
 \* No plano usado no benchmark, 1% da janela de 5h ≈ $0,33 em preço de API. Outro plano tem outra relação — o freio de janela do autopilot (`references/autopilot/hooks.md`) mostra o seu. Perfil max (Fable no break, Opus xhigh no init): +~$7 por projeto.
 
 **Onde a recomendação aparece:**
-- **Modo manual:** na linha `**Modelo:**` do Bloco de Handoff — antes do `/clear`, para a próxima sessão já abrir certo. Formato: `**Modelo:** Sonnet 5 · effort high (\`/model sonnet\`)`. No Passo 0 do `/execute`, também, para a sessão que já está rodando.
+- **Modo manual:** na linha `**Modelo:**` do Bloco de Handoff — antes do `/clear`, para a próxima sessão já abrir certo. Formato: `**Modelo:** Sonnet · effort high (\`/model sonnet\`)`. No Passo 0 do `/execute`, também, para a sessão que já está rodando.
 - **Autopilot:** o condutor roteia sozinho por esta tabela (coluna do perfil do run).
 
 **Model Routing automático (dentro do `/execute`):** o Agent tool aceita override de `model` por chamada. Issue com `Model hint: Opus/Fable` é despachada com o `model` da linha correspondente da tabela (balanced `opus`, max `fable`, econ sem override); as demais herdam. **O override por chamada vence o `model:` do frontmatter do agente registrado.** O usuário não precisa trocar de modelo no meio do sprint.
@@ -368,7 +370,7 @@ Formato (fixo):
 /project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md
 ```
 
-**Modelo:** Sonnet 5 — o orquestrador só despacha sub-agents.
+**Modelo:** Sonnet — o orquestrador só despacha sub-agents.
 **Ressalva:** issues 133/134/135 têm `Model hint: Opus/Fable` — roteadas automaticamente.
 **Depois:** `/verify` → `/secure` → `/ship`.
 ````

@@ -25,4 +25,4 @@ Ao gerar o `brief.md`:
 > ```
 > /project-maker init
 > ```
-> **Modelo:** Sonnet 5 · effort high (`/model sonnet`) — venceu o init no custo-benefício; Opus 5.5 · xhigh só no perfil max.
+> **Modelo:** Sonnet · effort high (`/model sonnet`) — venceu o init no custo-benefício; Opus 5.5 · xhigh só no perfil max.

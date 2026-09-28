@@ -64,7 +64,7 @@ Se não existir `Constitution.md`, gere seguindo as mesmas instruções do `/ini
 > ```
 > /project-maker break docs/specs/FEAT-012-prompt-caching-provider-agnostic.md
 > ```
-> **Modelo:** Sonnet 5 · effort high — 88,5/100 no break a 1/3 do custo do Fable (91,5, só no perfil max); Opus 5.5 · medium se velocidade importa mais.
+> **Modelo:** Sonnet · effort high — 88,5/100 no break a 1/3 do custo do Fable (91,5, só no perfil max); Opus 5.5 · medium se velocidade importa mais.
 
 **O argumento é o path real da spec que você acabou de gravar** — nunca emita `/project-maker break` pelado (regra Next Command 10). Em projeto multi-spec, comando sem alvo faz a sessão seguinte abrir sem saber o que quebrar.
 
