@@ -20,6 +20,8 @@ CONFIGS = {
     "opus-medium":  ["--model", "claude-opus-5-5", "--effort", "medium"],
     "sonnet-high":  ["--model", "claude-sonnet-5", "--effort", "high"],
     "haiku":        ["--model", "claude-haiku-4-5"],
+    "sonnet55-medium": ["--model", "claude-sonnet-5-5", "--effort", "medium"],
+    "sonnet55-high":   ["--model", "claude-sonnet-5-5", "--effort", "high"],
 }
 TIMEOUT = {"execute": 150 * 60, "break": 60 * 60}
 BUDGET = {"execute": "80", "break": "25"}

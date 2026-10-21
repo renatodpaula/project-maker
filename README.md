@@ -90,6 +90,7 @@ Complexity decides depth, not the other way around. The skill sizes itself autom
 Every mode was run for real on a frozen fixture across Fable 5.1, Opus 5.5 (xhigh and medium), Sonnet 5 and Haiku 4.5. Quality was scored with blind judges, hidden acceptance tests, 5 planted vulnerabilities and 2 planted bugs. The method and harness are in `evals/model-bench/`; the full report is on the [wiki](https://github.com/renatodpaula/project-maker/wiki/Benchmark-Report-2026-09).
 
 - **Sonnet 5 · high was 1st or 2nd on every stage**, at the lowest cost among the models that got it right. It is the default everywhere.
+- **Sonnet 5.5 · high vs medium** (re-measured 2026-10 on discover/init/spec/plan, 1 run per cell, 3 blind judges): high averaged 92.4 vs 88.1 for medium and 84.1 for Sonnet 5 · high re-run on the same input. Medium cost 30% less and took ~60% of the time but scored lower on init (82 vs 89) and spec (84.7 vs 93.0). The average gap (4.3) is within single-run noise, so high stays the default and no speed profile was added. `/break`, `/execute`, `/secure` and `/verify` were not re-measured.
 - **Effort mattered more than the model.** Opus 5.5 at xhigh cost 2–3× and took 3–5× longer than at medium, with no consistent gain.
 - **Opus 5.5 · medium was the fastest**, but it lost fidelity in the spec: it contradicted an owner's answer.
 - **Fable 5.1 only won `/break`**: +3 points at 2.7× the cost.
@@ -302,6 +303,7 @@ A complexidade decide a profundidade, não o contrário. A skill se dimensiona s
 Cada modo foi rodado de verdade, sobre um insumo congelado, com Fable 5.1, Opus 5.5 (xhigh e medium), Sonnet 5 e Haiku 4.5. A qualidade foi medida com juízes cegos, testes de aceitação ocultos, 5 vulnerabilidades plantadas e 2 bugs plantados. Método e harness em `evals/model-bench/`; relatório completo na [wiki](https://github.com/renatodpaula/project-maker/wiki/Benchmark-Report-2026-09).
 
 - **Sonnet 5 · high ficou em 1º ou 2º em todas as etapas**, pelo menor custo entre os modelos que acertaram. É o padrão em tudo.
+- **Sonnet 5.5 · high vs medium** (remedido em 2026-10 em discover/init/spec/plan, 1 run por célula, 3 juízes cegos): o high fez 92,4 de média contra 88,1 do medium e 84,1 do Sonnet 5 · high re-rodado no mesmo insumo. O medium custou 30% menos e levou ~60% do tempo, mas pontuou menos no init (82 vs 89) e no spec (84,7 vs 93,0). A diferença média (4,3) está dentro do ruído de uma run, então o high segue como padrão e nenhum perfil de velocidade foi criado. `/break`, `/execute`, `/secure` e `/verify` não foram remedidos.
 - **O effort pesou mais que o modelo.** Em xhigh, o Opus 5.5 custou 2–3× e demorou 3–5× mais do que em medium, sem ganho consistente.
 - **Opus 5.5 · medium foi o mais rápido**, mas perdeu fidelidade no spec: contrariou uma resposta do dono.
 - **Fable 5.1 só venceu no `/break`**: +3 pontos a 2,7× o custo.
