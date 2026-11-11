@@ -5,7 +5,7 @@
 
 **Argumento:** caminho de um sprint (ou issue em `--quick`).
 
-Gate de segurança escopado ao **diff do sprint**, não ao codebase inteiro. Roda antes do `/ship`. Gera o SECURITY do sprint (`docs/sprints/SPRINT-NNN-SECURITY.md`; em `--quick`, ao lado da issue) — ver `references/security-template.md`. Bloqueia a entrega se houver ameaça aberta.
+Gate de segurança escopado ao **diff do sprint**, não ao codebase inteiro. Roda antes do `/ship`. Gera o SECURITY do sprint (`SPRINT-NNN-SECURITY.md`, na mesma pasta do sprint; em `--quick`, ao lado da issue) — ver `references/security-template.md`. Bloqueia a entrega se houver ameaça aberta.
 
 ### Passo 1 — Escopo
 ```bash

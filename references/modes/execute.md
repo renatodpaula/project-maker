@@ -3,7 +3,9 @@
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 > **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `execute` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Argumento:** caminho de um **sprint** (`docs/sprints/SPRINT-NNN-[slug].md`) ou, em modo `--quick`, de uma issue isolada.
+**Argumento:** caminho de um **sprint** (`docs/sprints/SPRINT-NNN-[slug].md`, ou `docs/specs/FEAT-NNN-[slug]/sprints/SPRINT-NNN-[slug].md` em pasta de feature) ou, em modo `--quick`, de uma issue isolada.
+
+**Spec do sprint:** sprint em pasta de feature usa o `spec.md` e o `context.md` da própria pasta; os demais usam a spec citada no sprint ou nas issues (`Spec relacionada`), por padrão `Spec.md` e `context.md` da raiz. Onde este modo diz `Spec.md`, leia a spec do sprint.
 
 `/execute` é um **orquestrador**. Ele não escreve código diretamente — dispara sub-agents separados para implementar e validar cada issue do sprint, roda reassess ao fim, e aplica o Milestone Validation Gate antes de fechar o sprint.
 
@@ -206,7 +208,7 @@ Dispare UAT interativo **apenas** se o sprint entrega uma feature user-facing co
 
 **Com `--autopilot`:** pule este passo (não dispare o `/verify` daqui) e siga para o Passo 5 — o condutor roda o verify como etapa própria, respeitando a política de UAT do run; se o verify achar gaps, é ele que volta o sprint para `⏸ pending-review`.
 
-**Fluxo:** dispare o modo `/verify` (ver `references/modes/verify.md`) passando o sprint atual. Ele gera o UAT resumível (`docs/sprints/SPRINT-NNN-uat.md`), injeta o cold-start smoke test quando aplicável, conduz o teste um a um, e — se houver gaps — roda o loop diagnose→fix→re-verify. Em `--quick`, gere o uat ao lado da issue.
+**Fluxo:** dispare o modo `/verify` (ver `references/modes/verify.md`) passando o sprint atual. Ele gera o UAT resumível (`SPRINT-NNN-uat.md`, ao lado do sprint), injeta o cold-start smoke test quando aplicável, conduz o teste um a um, e — se houver gaps — roda o loop diagnose→fix→re-verify. Em `--quick`, gere o uat ao lado da issue.
 
 - Se `/verify` retorna **sem gaps** → prossiga para Passo 5.
 - Se retorna **com gaps** → o `/verify` já criou as issues de fix; mantenha o sprint `⏸ pending-review` até as fixes passarem no re-verify.

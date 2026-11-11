@@ -3,18 +3,18 @@
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 > **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `break` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Argumento:** caminho de uma spec (`Spec.md` do projeto ou `docs/specs/FEAT-NNN-[slug].md` de uma feature — regra **Localização canônica**), ou nada — neste caso o Passo 0 resolve o alvo.
+**Argumento:** caminho de uma spec (`Spec.md` do projeto ou `docs/specs/FEAT-NNN-[slug]/spec.md` de uma feature; spec de feature em arquivo solto, do layout anterior, também vale — regra **Localização canônica**), ou nada — neste caso o Passo 0 resolve o alvo.
 
 **Pré-requisito:** existir **alvo** — uma spec não quebrada ou backlog não agendado no `PRD.md`. Leia `Constitution.md` e `steering/` se existirem.
 
-**Paths:** este modo grava tudo no diretório canônico de artefatos (padrão `docs/` — regra **Localização canônica** das Harness Rules). Os paths abaixo usam o padrão; se `steering/structure.md` registrar outro diretório, use o registrado.
+**Paths:** logo após o Passo 0, rode `python3 <skill-dir>/scripts/pm.py paths [path da spec]`. Grave os sprints na pasta da linha `sprints:` e as issues na da linha `issues:`, e numere os sprints a partir de `next_sprint`. Spec em pasta de feature grava dentro da própria pasta; as demais gravam em `docs/sprints/` e `docs/issues/` (regra **Localização canônica**). Break de backlog, sem spec: `pm.py paths` sem argumento dá o `next_sprint`, e as pastas são `docs/sprints/` e `docs/issues/`. Os paths dos passos abaixo usam o layout plano como exemplo; `research.md`, `data-model.md` e `contracts/` ficam sempre em `docs/`. Se `steering/structure.md` registrar outro diretório, use o registrado.
 
 ### Passo 0 — Resolver o alvo (obrigatório, antes de qualquer outro passo)
 
 Nunca comece a quebrar sem saber **o que** está quebrando. Ordem de precedência:
 
 1. **Argumento recebido** — use o path dado. Se não existir no disco, pare e reporte (não adivinhe spec parecida).
-2. **Spec sem sprint** — liste as specs do projeto (`docs/specs/*.md`, ou `Spec.md` na raiz em projeto single-feature) e cruze com o `PRD.md`: qual spec **não** tem sprint correspondente? Se há exatamente uma, é o alvo. Se há mais de uma, pergunte qual (`AskUserQuestion`) listando-as com o REQ count de cada.
+2. **Spec sem sprint** — liste as specs do projeto (`docs/specs/*/spec.md`, `docs/specs/*.md` fora os `.context.md`, e `Spec.md` na raiz) e cruze com o `PRD.md`: qual spec **não** tem sprint correspondente? Se há exatamente uma, é o alvo. Se há mais de uma, pergunte qual (`AskUserQuestion`) listando-as com o REQ count de cada.
 3. **Backlog não agendado do `PRD.md`** — a seção `### Backlog não agendado` (ou equivalente) com itens de tech debt/achados de review. Quebrar backlog em sprint é uso legítimo do modo: não gera `Spec.md`, os REQs viram os próprios itens do backlog, e o header de rastreabilidade das issues aponta para a origem do achado em vez de `REQ-N`.
 4. **Nada dos três** — **não fique perguntando o que fazer**. O projeto não tem trabalho pendente de decomposição; o próximo passo é **criar** o insumo. Pule direto para o Bloco de Handoff com `/project-maker spec feature "[nome]"` como comando primário (`/project-maker discover` se a ideia ainda é vaga), e diga em uma linha o que foi verificado: specs conferidas contra o PRD, backlog vazio.
 
@@ -59,7 +59,7 @@ Para cada endpoint ou integração identificada na spec, gere um arquivo em `doc
 - Response: status codes, body de sucesso, body de erro
 - Autenticação e autorização necessárias
 
-**Passo 4 — Issues de prototype** (salvar em `docs/issues/prototype/`) — **só se a spec tem interface visual**
+**Passo 4 — Issues de prototype** (salvar em `prototype/` dentro da pasta de issues; no layout plano, `docs/issues/prototype/`) — **só se a spec tem interface visual**
 Projeto sem telas (CLI, biblioteca, API, pipeline de dados, automação): pule este passo; todas as issues são funcionais.
 
 Com interface: uma issue por página da Spec. Cada issue descreve apenas a parte visual — layout, componentes, estados visuais (loading, vazio, erro). Sem lógica de negócio, sem chamadas de API.
@@ -82,7 +82,7 @@ O `/execute` lê esses hints para recomendar quais issues rodar em tier de racio
 
 **Regra de ferro:** uma issue tem que caber em uma janela de contexto. Se a sua lista de arquivos/comportamentos não cabe claramente, quebre em duas issues.
 
-**Passo 5 — Issues funcionais** (salvar em `docs/issues/functional/`)
+**Passo 5 — Issues funcionais** (salvar em `functional/` dentro da pasta de issues; no layout plano, `docs/issues/functional/`)
 Uma issue por comportamento ou grupo de comportamentos da Spec. Cada issue torna um prototype funcional: conecta ao banco, chama APIs, valida dados, trata erros.
 
 Mesmo header de rastreabilidade da etapa anterior. Mesma regra de ferro.
@@ -91,7 +91,7 @@ Mesmo header de rastreabilidade da etapa anterior. Mesma regra de ferro.
 
 **Marque issues paralelas com `[P]`** no nome e no sprint: issues sem dependências entre si podem ser executadas em paralelo.
 
-**Passo 6 — Sprints** (salvar em `docs/sprints/SPRINT-NNN-[slug].md`)
+**Passo 6 — Sprints** (salvar como `SPRINT-NNN-[slug].md` na pasta de sprints; no layout plano, `docs/sprints/`)
 
 Agrupe as issues em sprints. **Cada sprint é uma unidade de entrega autônoma** com um Goal claro e Success Criteria verificáveis. Leia `references/sprint-template.md` para o formato.
 
@@ -106,7 +106,7 @@ Exemplo de Success Criterion bom:
 - ✅ "usuário cria conta, confirma email e faz login com a nova conta"
 - ❌ "autenticação funciona bem"
 
-Nomeie os sprints com numeração + slug: `SPRINT-001-auth.md`, `SPRINT-002-dashboard.md`.
+Nomeie os sprints com numeração + slug: `SPRINT-001-auth.md`, `SPRINT-002-dashboard.md`. A numeração é do projeto, não da feature: continue de `next_sprint`. Na seção `## Issues` do sprint, cite cada issue pelo path completo a partir da raiz do projeto, nos dois layouts.
 
 **Wave analysis (dentro de cada sprint).** Antes de fechar o sprint.md, derive os grupos de execução a partir dos `Depends on` das issues e preencha a seção `## Waves` (ver `references/sprint-template.md`):
 - Issues sem dependências → Wave 1 (rodam em paralelo).
@@ -146,7 +146,7 @@ Status de issue: `🔲 pendente` · `🔄 em progresso` · `⏸ blocked` · `✅
 
 ```bash
 python3 <skill-dir>/scripts/pm.py coverage [path da spec]            # todo REQ-N tem issue que o implementa?
-python3 <skill-dir>/scripts/pm.py waves docs/sprints/SPRINT-NNN-[slug].md   # um por sprint: colisão de arquivo na mesma wave, issue fora de wave
+python3 <skill-dir>/scripts/pm.py waves [path real do sprint]   # um por sprint: colisão de arquivo na mesma wave, issue fora de wave
 ```
 
 - `coverage` com exit 1 lista os REQs sem issue e os `Implements` que citam REQ inexistente. Crie a issue que falta ou corrija o header; REQ deixado de fora de propósito vai para `### Backlog não agendado` do PRD com o motivo, e a issue-fantasma não é a saída. (Break de backlog, sem spec: pule o `coverage`.)

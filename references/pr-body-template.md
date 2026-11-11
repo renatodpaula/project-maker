@@ -1,7 +1,7 @@
 # PR Body Template
 
 > Formato do corpo do Pull Request gerado pelo `/ship`. O corpo é montado **a partir dos artefatos** já existentes no projeto — não invente conteúdo, sintetize do que está em disco.
-> Fontes: `docs/sprints/SPRINT-NNN.md` (Goal, Success Criteria), `Spec.md` (REQ-N), `PRD.md` (rastreabilidade), `DECISIONS.md` (decisões do sprint), `Summary` de cada issue, `docs/sprints/SPRINT-NNN-uat.md`/Milestone Gate (verificação), `docs/sprints/SPRINT-NNN-SECURITY.md` (gate de segurança).
+> Fontes: o arquivo do sprint (Goal, Success Criteria), a spec do sprint (REQ-N), `PRD.md` (rastreabilidade), `DECISIONS.md` (decisões do sprint), `Summary` de cada issue, `docs/sprints/SPRINT-NNN-uat.md`/Milestone Gate (verificação), `docs/sprints/SPRINT-NNN-SECURITY.md` (gate de segurança).
 
 Escreva o corpo num arquivo temporário e crie o PR com `gh pr create --body-file` (evita o limite de argumento do shell).
 

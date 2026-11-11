@@ -1,7 +1,7 @@
 # Issue: [Título]
 
 **Tipo**: prototype | functional
-**Spec relacionada**: `Spec.md`
+**Spec relacionada**: `Spec.md` | `docs/specs/FEAT-NNN-[slug]/spec.md`
 **Branch**: `sprint/[slug-do-sprint]` (issue isolada em `--quick`: `issue/[slug-do-titulo]`)
 **Status**: draft | planned | in-progress | done
 **Model hint**: Sonnet | Opus/Fable

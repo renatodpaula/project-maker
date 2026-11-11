@@ -3,7 +3,7 @@
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 > **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `verify` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Argumento:** caminho de um sprint (`docs/sprints/SPRINT-NNN-[slug].md`) ou de uma issue em `--quick`.
+**Argumento:** caminho de um sprint (`SPRINT-NNN-[slug].md` em `docs/sprints/` ou na pasta `sprints/` de uma feature) ou de uma issue em `--quick`.
 
 UAT conduzido — confirma que o que foi construído **funciona da perspectiva do usuário**, no que o validator automático (lógica) não alcança (experiência). Disparado no Passo 4.5 do `/execute` ou manualmente após uma entrega user-facing.
 
@@ -11,7 +11,7 @@ UAT conduzido — confirma que o que foi construído **funciona da perspectiva d
 
 ### Passo 0 — Session Loading + checar sessão ativa
 - Leia STATE.md, Constitution.md, steering relevante.
-- Procure o arquivo de UAT do sprint (`docs/sprints/SPRINT-NNN-uat.md`; em `--quick`, ao lado da issue) com `status: testing | partial`. Se existir, **retome** do primeiro teste `pending` (o frontmatter sobrevive a `/clear`). Senão, crie novo.
+- Procure o arquivo de UAT do sprint (`SPRINT-NNN-uat.md`, na mesma pasta do sprint; em `--quick`, ao lado da issue) com `status: testing | partial`. Se existir, **retome** do primeiro teste `pending` (o frontmatter sobrevive a `/clear`). Senão, crie novo.
 
 ### Passo 1 — Extrair testes
 - Leia os `Summary` das issues do sprint e os `Done when`. Extraia **deliverables observáveis pelo usuário** (não refactors/tipos internos).
@@ -29,7 +29,7 @@ Antes de perguntar qualquer coisa ao usuário, rode você mesmo todo teste que u
 
 ### Passo 3 — Se houver gaps: loop diagnose → fix → re-verify
 1. **Diagnose:** para cada gap, dispare um sub-agent que investiga a root cause (lê o diff do sprint + o gap). Preencha `root_cause` no YAML.
-2. **Fix issue:** crie uma issue de fix em `docs/issues/functional/` (gap_closure) por root cause, com `Done when` derivado do `truth` do gap e `Gate` real. Linke em `fix_issue`.
+2. **Fix issue:** crie uma issue de fix na pasta `functional/` das issues do sprint (a mesma das outras issues dele; `docs/issues/functional/` no layout plano) (gap_closure) por root cause, com `Done when` derivado do `truth` do gap e `Gate` real. Linke em `fix_issue`.
 3. **Execute:** instrua `/execute` nas issues de fix (`--quick` se isolado, ou nova mini-wave no sprint).
 4. **Re-verify:** re-rode só os testes que tinham falhado. Repita no máximo o que o `Stuck Detection` permite (não fique em loop infinito).
 

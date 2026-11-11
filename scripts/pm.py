@@ -7,11 +7,16 @@ Rode na raiz do projeto (ou passe --root):
   pm.py status                        sprints, issues, UAT e SECURITY lidos do disco
   pm.py coverage [spec]               todo REQ-N da spec tem issue que o implementa?
   pm.py waves <sprint.md>             issues da mesma wave tocam o mesmo arquivo?
+  pm.py paths [spec]                  onde gravar sprints e issues dessa spec; próximos números de SPRINT e FEAT
+
+Dois layouts convivem no mesmo projeto. Plano: Spec.md (ou docs/specs/FEAT-NNN-x.md) com docs/sprints/ e
+docs/issues/. Por feature: docs/specs/FEAT-NNN-x/spec.md com sprints/ e issues/ dentro da pasta.
 
 Exit 0 = ok. Exit 1 = o sensor reprovou (motivo em uma linha no stderr). Exit 2 = uso errado.
 Os modos do skill rodam estes comandos em vez de conferir o estado "de cabeça".
 """
 import argparse
+import os
 import re
 import sys
 from pathlib import Path
@@ -61,11 +66,34 @@ def frontmatter(text):
     return out
 
 
+SKIP_DIRS = {".git", "node_modules", ".claude", ".pm-autopilot"}
+
+
+def walk_md(root):
+    """Todo .md do projeto. Não desce em SKIP_DIRS nem em repo ou worktree aninhado (pasta com .git próprio)."""
+    for base, dirs, files in os.walk(root):
+        dirs[:] = sorted(d for d in dirs if d not in SKIP_DIRS and not os.path.exists(os.path.join(base, d, ".git")))
+        for f in sorted(files):
+            if f.endswith(".md"):
+                yield Path(base) / f
+
+
 def sprints(root):
-    found = [p for p in root.rglob("SPRINT-*.md")
-             if not re.search(r"-(uat|SECURITY)\.md$", p.name)
-             and not any(part in (".git", "node_modules", ".claude", ".pm-autopilot") for part in p.parts)]
+    found = [p for p in walk_md(root)
+             if p.name.startswith("SPRINT-") and not re.search(r"-(uat|SECURITY)\.md$", p.name)]
     return sorted(found, key=lambda p: p.name)
+
+
+def specs(root):
+    """Specs do projeto: Spec.md na raiz, docs/specs/FEAT-*.md (layout plano) e docs/specs/*/spec.md (pasta por feature)."""
+    d = root / "docs" / "specs"
+    flat = [p for p in sorted(d.glob("*.md")) if not p.name.endswith(".context.md")]
+    return [p for p in [root / "Spec.md"] + flat + sorted(d.glob("*/spec.md")) if p.exists()]
+
+
+def feature_dir(root, spec):
+    """Pasta da feature quando a spec é <pasta>/spec.md fora da raiz; None no layout plano."""
+    return spec.parent if spec.name.lower() == "spec.md" and spec.parent != root else None
 
 
 def sprint_issues(root, sprint):
@@ -157,8 +185,7 @@ def find_spec(root, arg):
     if arg:
         p = root / arg
         return p if p.exists() else fail(f"spec inexistente: {arg}")
-    cands = [root / "Spec.md"] + sorted((root / "docs" / "specs").glob("*.md"))
-    cands = [c for c in cands if c.exists()]
+    cands = specs(root)
     if len(cands) != 1:
         fail(f"{len(cands)} specs no disco; passe o path" if cands else "nenhuma spec no disco")
     return cands[0]
@@ -170,8 +197,13 @@ def cmd_coverage(a):
     if not reqs:
         fail(f"{spec.relative_to(a.root)} não tem nenhum REQ-N")
     implemented = {}
-    for issue in a.root.rglob("*.md"):
-        if "issues" not in issue.parts or ".git" in issue.parts:
+    # layout por feature: só as issues da pasta da spec; layout plano: todas, menos as de pastas de feature
+    own = feature_dir(a.root, spec)
+    others = [d for d in (feature_dir(a.root, s) for s in specs(a.root)) if d]
+    for issue in walk_md(a.root):
+        if "issues" not in issue.relative_to(a.root).parts:
+            continue
+        if (own not in issue.parents) if own else any(d in issue.parents for d in others):
             continue
         m = re.search(r"^\**Implements\**:\s*(.+)$", read(issue), re.M)
         for r in re.findall(r"REQ-\d+", m.group(1) if m else ""):
@@ -221,6 +253,32 @@ def cmd_waves(a):
     print(f"{len(wave_lines)} waves sem colisão" + (f" (sem lista de arquivos, não conferidas: {', '.join(unplanned)})" if unplanned else ""))
 
 
+def next_number(names, prefix):
+    nums = [int(m.group(1)) for m in (re.match(prefix + r"-(\d+)", n) for n in names) if m]
+    return f"{max(nums, default=0) + 1:03d}"
+
+
+def cmd_paths(a):
+    all_sprints = sprints(a.root)
+    if a.spec:
+        spec = find_spec(a.root, a.spec)
+        own = feature_dir(a.root, spec)
+        if own:
+            sprint_dir = own / "sprints"
+        else:
+            # convenção existente vence: a pasta onde os sprints do layout plano já estão
+            others = [d for d in (feature_dir(a.root, s) for s in specs(a.root)) if d]
+            flat = [s for s in all_sprints if not any(d in s.parents for d in others)]
+            sprint_dir = flat[-1].parent if flat else a.root / "docs" / "sprints"
+        print(f"layout: {'feature' if own else 'flat'}")
+        print(f"spec: {spec.relative_to(a.root)}")
+        print(f"sprints: {sprint_dir.relative_to(a.root)}")
+        print(f"issues: {(sprint_dir.parent / 'issues').relative_to(a.root)}")
+    spec_dir = a.root / "docs" / "specs"
+    print(f"next_sprint: SPRINT-{next_number([s.name for s in all_sprints], 'SPRINT')}")
+    print(f"next_feat: FEAT-{next_number([p.name for p in spec_dir.glob('FEAT-*')], 'FEAT')}")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--root", type=Path, default=Path.cwd())
@@ -229,6 +287,7 @@ def main():
     sub.add_parser("status").set_defaults(fn=cmd_status)
     c = sub.add_parser("coverage"); c.add_argument("spec", nargs="?"); c.set_defaults(fn=cmd_coverage)
     w = sub.add_parser("waves"); w.add_argument("sprint"); w.set_defaults(fn=cmd_waves)
+    p = sub.add_parser("paths"); p.add_argument("spec", nargs="?"); p.set_defaults(fn=cmd_paths)
     a = ap.parse_args()
     a.root = a.root.resolve()
     a.fn(a)

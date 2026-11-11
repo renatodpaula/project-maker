@@ -5,7 +5,7 @@ metadata:
   author: Renato de Paula Cardoso <renato@renatodpaula.com.br>
   homepage: https://github.com/renatodpaula/project-maker
   instagram: https://instagram.com/renatodpaula.ai
-  version: 3.4.0
+  version: 3.5.0
 description: |
   Workflow Spec-Driven Development para criar projetos ou adicionar features com IA de forma estruturada:
   brief, spec com requisitos verificáveis, sprints e issues, execução com implementer e validator separados,
@@ -127,15 +127,15 @@ Steering (contexto do projeto, estável):
 
 Feature/sprint/issue (paths conforme regra **Localização canônica**):
 - `brief.md` — ideia inicial estruturada (gerado no /discover)
-- `Spec.md` — requisitos funcionais com acceptance criteria em EARS
-- `context.md` — decisões do Discuss phase sobre gray areas (condicional)
+- `Spec.md` (projeto) ou `docs/specs/FEAT-NNN-[slug]/spec.md` (feature) — requisitos funcionais com acceptance criteria em EARS
+- `context.md`, ao lado da spec — decisões do Discuss phase sobre gray areas (condicional)
 - `docs/research.md` — pesquisa técnica pré-implementação (com Package Legitimacy Audit quando há pacotes)
 - `docs/data-model.md` — entidades, schemas, relacionamentos
 - `docs/contracts/` — especificações de API (endpoints, payloads, responses)
-- `docs/sprints/` — sprints com Goal, Success Criteria, Issues, Waves, Reassess Notes
-- `docs/issues/` — issues de execução geradas pelo /break
-- `docs/sprints/SPRINT-NNN-uat.md` — script de UAT resumível (condicional, gerado no /verify ou /execute)
-- `docs/sprints/SPRINT-NNN-SECURITY.md` — resultado do gate de segurança (condicional, gerado no /secure)
+- `sprints/` — sprints com Goal, Success Criteria, Issues, Waves, Reassess Notes
+- `issues/` — issues de execução geradas pelo /break
+- `SPRINT-NNN-uat.md`, ao lado do sprint — script de UAT resumível (condicional, gerado no /verify ou /execute)
+- `SPRINT-NNN-SECURITY.md`, ao lado do sprint — resultado do gate de segurança (condicional, gerado no /secure)
 
 ---
 
@@ -160,9 +160,10 @@ Três arquivos vivos com churn e propósito diferentes. **Não misturar conteúd
 Todo artefato tem um lugar único — duas sessões nunca podem criar o mesmo artefato em diretórios diferentes.
 
 - **Raiz do projeto:** `STATE.md`, `DECISIONS.md`, `KNOWLEDGE.md`, `PRD.md`, `Constitution.md`, `brief.md`, `steering/`.
-- **Specs:** a spec do projeto (`/spec new`) é `Spec.md` na raiz, com `context.md` ao lado. Cada feature (`/spec feature`) é um arquivo próprio, `docs/specs/FEAT-NNN-[slug].md`, com o Discuss em `docs/specs/FEAT-NNN-[slug].context.md`. Uma feature nova nunca sobrescreve `Spec.md` nem a spec de outra feature. NNN = maior número existente em `docs/specs/` + 1.
-- **`docs/` (padrão):** artefatos de planejamento — `docs/research.md`, `docs/data-model.md`, `docs/contracts/`, `docs/sprints/`, `docs/issues/`.
-- **Por sprint:** UAT e SECURITY acompanham o sprint — `docs/sprints/SPRINT-NNN-uat.md`, `docs/sprints/SPRINT-NNN-SECURITY.md`. Em `--quick`, ao lado da issue.
+- **Specs:** a spec do projeto (`/spec new`) é `Spec.md` na raiz, com `context.md` ao lado. Cada feature (`/spec feature`) ganha uma pasta, `docs/specs/FEAT-NNN-[slug]/`, com `spec.md` e `context.md` dentro. Uma feature nova nunca sobrescreve `Spec.md` nem a spec de outra feature.
+- **Sprints e issues ficam junto da spec que os gerou.** Spec em pasta de feature: `docs/specs/FEAT-NNN-[slug]/sprints/` e `docs/specs/FEAT-NNN-[slug]/issues/`. `Spec.md` da raiz, backlog do PRD ou spec de feature em arquivo solto (`docs/specs/FEAT-NNN-[slug].md`, layout anterior): `docs/sprints/` e `docs/issues/`. Os dois layouts convivem no mesmo projeto e artefato já gravado não muda de lugar: não migre projeto existente. O número do sprint é único no projeto inteiro (branch, commit e ledger usam ele). `python3 <skill-dir>/scripts/pm.py paths [spec]` devolve as duas pastas e os próximos números de SPRINT e FEAT: use a saída em vez de calcular.
+- **`docs/` (padrão):** artefatos de planejamento do projeto — `docs/research.md`, `docs/data-model.md`, `docs/contracts/`.
+- **Por sprint:** UAT e SECURITY ficam na mesma pasta do arquivo do sprint — `SPRINT-NNN-uat.md`, `SPRINT-NNN-SECURITY.md`. Em `--quick`, ao lado da issue.
 
 **Convenção existente vence:** se o projeto já guarda esses artefatos em outro lugar, siga o que existe e registre a localização em `steering/structure.md` (o `/init` grava; os demais modos leem de lá). Em dúvida, `ls`/Glob antes de criar — **nunca crie um segundo diretório para um artefato que já existe**.
 
@@ -193,7 +194,7 @@ Se algum desses arquivos não existir ainda, criá-lo a partir do template corre
 **On-demand load:**
 - `references/modes/[modo].md` — só o modo que vai executar agora
 - `steering/CONCERNS.md` — só quando a issue toca área flagged
-- `Spec.md` — só da feature ativa
+- A spec — só a da feature ativa
 - `docs/data-model.md` + `docs/contracts/` — só quando planejando/implementando algo que envolve dados ou APIs
 - `docs/research.md` — só no /plan e /execute da issue que depende dele
 - Uma issue por vez
@@ -469,7 +470,7 @@ Modos (passos completos, carregados on-demand):
 - `references/modes/` — um arquivo por modo: discover, init, spec, break, plan, execute, verify, secure, ship, build, pause, resume, autopilot
 
 Sensores e notas:
-- `scripts/pm.py` — sensores determinísticos: `next` (valida o Next command), `status`, `coverage` (REQ → issue), `waves` (colisão de arquivo)
+- `scripts/pm.py` — sensores determinísticos: `next` (valida o Next command), `status`, `coverage` (REQ → issue), `waves` (colisão de arquivo), `paths` (onde gravar sprints e issues de uma spec)
 - `references/model-advisor.md` — medições do benchmark, custo por etapa, escolha de perfil e limites do que foi medido
 - `references/harness-notes.md` — sondas de comportamento do harness por versão e lições de runs reais
 

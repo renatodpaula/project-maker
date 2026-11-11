@@ -69,4 +69,44 @@ check 1 "waves: referência que não casa com issue"   waves docs/sprints/SPRINT
 printf '# Sprint\n\n**Status**: planned\n' > "$T/docs/sprints/SPRINT-001-x.md"
 check 1 "waves: sprint sem seção Waves"              waves docs/sprints/SPRINT-001-x.md
 
+# --- layout por feature convivendo com o plano
+# out <trecho esperado> <descrição> <args...>: exit 0 e o trecho na saída
+out() {
+  local want="$1" desc="$2"; shift 2
+  if python3 "$PM" --root "$T" "$@" >"$T/.out" 2>&1 && grep -qF -- "$want" "$T/.out"; then echo "ok    saída   $desc"; else echo "FAIL  sem '$want'  $desc"; sed 's/^/        /' "$T/.out"; fails=$((fails+1)); fi
+}
+sprint "Wave 1 (paralelo): functional/01, functional/02" "Wave 2: functional/03"
+F="docs/specs/FEAT-007-cobranca"
+mkdir -p "$T/$F/sprints"
+printf '# Spec\n\n- REQ-1 x\n- REQ-2 y\n' > "$T/$F/spec.md"
+printf '# Context\n\nREQ-5 citado no discuss\n' > "$T/$F/context.md"
+issue "$F/issues/functional/01-x.md" "REQ-1" src/x.js
+issue "$F/issues/functional/02-y.md" "REQ-2" src/x.js
+{ printf '# Sprint 002\n\n**Status**: planned\n\n## Issues\n\n- [ ] `%s/issues/functional/01-x.md`\n- [ ] `%s/issues/functional/02-y.md`\n' "$F" "$F"
+  printf '\n## Waves\n\n```\nWave 1: functional/01\nWave 2: functional/02\n```\n'; } > "$T/$F/sprints/SPRINT-002-cobranca.md"
+check 0 "coverage: feature só conta as issues da própria pasta"   coverage "$F/spec.md"
+check 0 "coverage: layout plano ignora issues de pasta de feature" coverage Spec.md
+check 1 "coverage: sem path com duas specs no disco"             coverage
+check 0 "waves: sprint dentro da pasta da feature"               waves "$F/sprints/SPRINT-002-cobranca.md"
+out "sprints: $F/sprints"   "paths: feature grava na própria pasta"   paths "$F/spec.md"
+out "issues: $F/issues"     "paths: issues da feature"                paths "$F/spec.md"
+out "sprints: docs/sprints" "paths: Spec.md da raiz segue no layout plano" paths Spec.md
+out "next_sprint: SPRINT-003" "paths: número de sprint é único no projeto" paths
+out "next_feat: FEAT-008"   "paths: próximo FEAT"                     paths
+out "$F/sprints/SPRINT-002-cobranca.md" "status: lista sprint de pasta de feature" status
+printf '# Spec\n\n- REQ-1 z\n' > "$T/docs/specs/FEAT-003-antiga.md"
+printf '# Context\n' > "$T/docs/specs/FEAT-003-antiga.context.md"
+out "layout: flat"          "paths: spec de feature em arquivo solto segue no plano" paths docs/specs/FEAT-003-antiga.md
+rm "$T/docs/specs/FEAT-003-antiga.md" "$T/docs/specs/FEAT-003-antiga.context.md"; rm -r "$T/$F"
+
+# --- repo aninhado (clone ou worktree dentro do projeto) não entra na conta
+mkdir -p "$T/staging/outro/.git" "$T/staging/outro/docs/sprints" "$T/staging/outro/docs/issues/functional"
+cp "$T/docs/sprints/SPRINT-001-x.md" "$T/staging/outro/docs/sprints/SPRINT-150-alheio.md"
+issue staging/outro/docs/issues/functional/01-z.md "REQ-77" src/z.js
+state "/project-maker execute"
+check 0 "next: sprint de repo aninhado não conta"                next
+check 0 "coverage: issue de repo aninhado não conta"             coverage
+out "next_sprint: SPRINT-002" "paths: numeração ignora repo aninhado" paths
+rm -r "$T/staging"
+
 echo "---"; [ "$fails" -eq 0 ] && echo "todos os casos passaram" || { echo "$fails caso(s) falharam"; exit 1; }
