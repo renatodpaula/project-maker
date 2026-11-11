@@ -29,7 +29,7 @@ L0 CONDUTOR  = esta sessão. Única que fala com você (AskUserQuestion, PushNot
 2. **Git:** repositório com ≥1 commit (se não, ofereça `git init` + commit inicial e pare até confirmar). Crie `.pm-autopilot/` e garanta em `.git/info/exclude` as linhas `.pm-autopilot/`, `.claude/agents/pm-stage-*.md` e `.claude/hooks/pm-guard.sh` — arquivos do condutor não sujam a árvore nem quebram o sensor de árvore limpa.
 3. **Agentes de etapa (opcionais):** se `pm-stage-workhorse`/`pm-stage-reasoning` estão registrados nesta sessão (aparecem na lista de agentes da ferramenta Agent), use-os como `subagent_type`; senão use `general-purpose`. Nos dois casos o condutor passa `model` e `effort` da tabela em **toda** chamada (regra **Despacho explícito**), então o effort da sessão não importa e não há o que perguntar. Grave `stage_agents: registered|fallback` no ledger.
 4. **Freio de janela (opt-in):** se `~/.claude/pm-usage.json` não existe, ofereça uma vez o bloco da statusline de `references/autopilot/hooks.md` (§ Medidor da janela de uso). Sem ele o run não tem como pausar antes de estourar a janela de 5h — diga isso em uma linha.
-5. **Guard (opt-in):** se `.claude/hooks/pm-guard.sh` não está registrado, ofereça a instalação de `references/autopilot/hooks.md` (precisa de `jq`: `command -v jq`). Grave `guard: on|off` no ledger. Sem guard, as proibições do Stage Contract valem só por instrução — diga isso em uma linha.
+5. **Guard (duas camadas):** (a) `pm-guard.sh` (hook PreToolUse; já ativo se o skill está carregado como plugin, senão registrado em `.claude/hooks/`) e (b) `pm-pre-push.sh` em `.git/hooks/pre-push`, que roda dentro do git e pega o push que o guard não vê. Faltando alguma, ofereça a instalação de `references/autopilot/hooks.md` (o guard precisa de `jq`). Grave `guard: on|pre-push-only|off` no ledger. Sem nenhuma, as proibições do Stage Contract valem só por instrução — diga isso em uma linha.
 6. **Run existente:** se `.pm-autopilot/ledger.md` existe com `status` ≠ `done`, isto é uma **retomada**: execute o subcomando `resume` (abaixo) antes de qualquer despacho — nunca herde silenciosamente a política de push/PR de outra sessão.
 7. **Cursor inicial** (nesta ordem):
    - argumento `alvo` recebido → o modo que consome esse alvo;
@@ -63,7 +63,7 @@ Repita até uma condição de parada (Passo 3):
 2. **Resolva a etapa** a partir do `cursor` (`/project-maker <modo> <alvo>`).
    - Se o cursor é `execute <sprint>` e o sprint **não** está em `planned` no ledger: esta iteração despacha `plan <sprint>`. Ao validar o `done`, acrescente o sprint a `planned` e **mantenha** `cursor = execute <sprint>` (ignore o `next` do plan). Na iteração seguinte sai o execute. Sem isso o loop roda plan para sempre.
    - Base do branch: o sprint parte de `main`, a menos que dependa (`depends_on` em `sprints` do ledger) de um sprint cujo PR ainda não foi mergeado — aí parte do branch desse sprint (PRs empilhados). Passe `base=<branch>` no prompt de **todas** as etapas do sprint (execute, secure, ship). Se o sprint depende de um sprint **bloqueado**, pule para o próximo sprint independente da lista; sem nenhum, pare.
-3. **Freio de janela:** se existir `~/.claude/pm-usage.json` (opt-in, `references/autopilot/hooks.md`) com `updated_at` de menos de 15 min, leia `five_hour.used_percentage` (`jq -r '.five_hour.used_percentage' ~/.claude/pm-usage.json`). Passou do limiar do perfil → **não despache**: `status: paused` e diga o horário do reset (`date -r $(jq -r '.five_hour.resets_at' ~/.claude/pm-usage.json) +%H:%M`). Arquivo mais velho que 15 min = leitura desconhecida; siga sem o freio e avise uma vez. Antes de um `execute`, exija também folga para ele (tabela **Consumo medido** do Model Advisor).
+3. **Freio de janela:** se existir `~/.claude/pm-usage.json` (opt-in, `references/autopilot/hooks.md`) com `updated_at` de menos de 15 min, leia `five_hour.used_percentage` (`jq -r '.five_hour.used_percentage' ~/.claude/pm-usage.json`). Passou do limiar do perfil → **não despache**: `status: paused` e diga o horário do reset (`date -r $(jq -r '.five_hour.resets_at' ~/.claude/pm-usage.json) +%H:%M`). Arquivo mais velho que 15 min = leitura desconhecida; siga sem o freio e avise uma vez. Antes de um `execute`, exija também folga para ele (tabela **Consumo medido** de `references/model-advisor.md`).
 4. **Roteie** pela tabela **Roteamento por etapa** do Model Advisor (SKILL.md), coluna do `profile`: `subagent_type` do agente de etapa e, quando a célula pede, `model` por chamada. O `next_model` do bloco anterior é só informativo — a tabela vence.
 5. **Grave `in_flight`** `{stage, target, ts}` no ledger **antes** de despachar.
 6. **Despache** o agente de etapa — a chamada tem sempre este formato, sem exceção:
@@ -71,10 +71,12 @@ Repita até uma condição de parada (Passo 3):
    Agent(subagent_type: "pm-stage-workhorse" | "general-purpose", description: "Etapa <modo>", model: "<da célula>", effort: "<da célula>", prompt: <template abaixo>)
    ```
    (`run_in_background: false` só se o schema da sua ferramenta Agent tiver o parâmetro.) O resultado chega por notificação: **espere por ela** antes do item 7. Sem o bloco em mãos o condutor não valida, não avança o cursor e não despacha a próxima etapa (regra **Despacho e espera**). Uma etapa por vez.
+
+   **Teto de espera.** Etapa sem notificação além do esperado (planejamento ~45 min; execute ~150 min): não redespache. Olhe o disco — `git log -3 --format='%cr %s'` e `git status --porcelain | wc -l`, duas leituras com alguns minutos de intervalo. Mudou = está viva, continue esperando. Parada nas duas leituras = travada: pare a etapa e os filhos dela (TaskStop, se disponível), grave no Log e siga para a ação de `failed`. Um agente abandonado sem ser parado já rodou 21 horas num laço de espera.
 7. **Valide o retorno** — o condutor não confia no relato; confere com sensores de 1 linha:
    - o bloco `PM_STAGE_RESULT` existe e tem as chaves obrigatórias;
-   - `next` bate com a linha `Next command` do STATE.md (`sed -n 's/.*Next command\*\*: *`\(.*\)`.*/\1/p' STATE.md`);
-   - cada token de `next` que parece path (contém `/` ou termina em `.md`) existe (`test -f`);
+   - `python3 <skill-dir>/scripts/pm.py next --expect "<next do bloco>"` sai com 0: o `Next command` do STATE.md é idêntico ao `next`, não tem placeholder e todo path dele existe;
+   - `break` com `done` → `pm.py coverage <scope_root>` sai com 0 e `pm.py waves <sprint>` sai com 0 para cada sprint de `extra.sprints`;
    - `spec` com `status: done` → `grep -c 'NEEDS CLARIFICATION' <target>` = 0;
    - `execute`/`verify`/`secure` com `done` → `git status --porcelain | wc -l` = 0;
    - `done` com decisão `blocking ≠ none` → trate como `needs_user`.
@@ -88,7 +90,7 @@ Repita até uma condição de parada (Passo 3):
 | `needs_user` | `blocking: stage` | pergunte já (gates abaixo); despache **agente novo** da mesma etapa com as respostas em "Decisões já respondidas" (o estado parcial está no disco) |
 | `partial` | `blocking: sprint`/`none` | guarde as decisões no inbox; se `next` é a mesma etapa, redespache (máx. 2 vezes seguidas); senão `cursor = next` |
 | `blocked` | qualquer | pergunte já; sem resposta que destrave, pare |
-| `failed` | — | 1 redespacho com "Retomada"; falhou de novo → pare e mostre o `summary` |
+| `failed` | — | **Confira antes se morreu:** notificação de falha por erro de API não prova que o agente parou. Duas leituras de `git log`/`git status` com alguns minutos de intervalo; se o disco muda, a etapa está viva — espere a próxima notificação. Parada: pare os filhos (TaskStop, se disponível), então 1 redespacho com "Retomada"; falhou de novo → pare e mostre o `summary` |
 | `break` `done`/`partial` | decisões do G1 (`package`/`slop`/`secret`/alto risco) | **Tela G1 agora**, antes de avançar o cursor — não redespache o break; as respostas vão para o inbox e seguem em "Decisões já respondidas" das etapas seguintes |
 | `verify` (`phase=prep`) | `kind: uat` | pergunte agora (política por sprint) e despache `verify … phase=apply` com as respostas literais |
 
@@ -113,14 +115,14 @@ Sua última mensagem é SÓ o bloco PM_STAGE_RESULT.
 | Situação | Tratamento |
 |---|---|
 | Perguntas do spec / gray areas (`needs_user`, `blocking: stage`) | **Pergunta já.** Até 4 por `AskUserQuestion`, no máx. 2 rodadas. Respostas → agente novo do spec. |
-| Pacotes `[SUS]`/`[ASSUMED]`, `[SLOP]`, env vars/segredos, assumptions de alto risco (vêm do `break`) | **Tela G1**, logo após o break, tudo junto: pacotes num `multiSelect`; segredos o usuário preenche em `.env.local` fora do chat. Junto, mostre a estimativa "N sprints · M issues · consumo previsto (tabela Consumo medido)". |
+| Pacotes `[SUS]`/`[ASSUMED]`, `[SLOP]`, env vars/segredos, assumptions de alto risco (vêm do `break`) | **Tela G1**, logo após o break, tudo junto: pacotes num `multiSelect`; segredos o usuário preenche em `.env.local` fora do chat. Junto, mostre a estimativa "N sprints · M issues · consumo previsto (tabela Consumo medido de `references/model-advisor.md`)". |
 | Pacote novo no meio do execute | **Lote:** a issue fica `awaiting-human`, o resto segue; pergunta na fronteira do sprint. |
 | Stuck (3 falhas) | **Lote**, vira pergunta quando não houver mais nada executável no sprint. |
 | Milestone gate reprovado (substantivo) | **Pergunta** na fronteira do sprint. Sprint dependente não começa. |
 | UAT | Política **por sprint**: despache `verify … phase=prep`; cada teste de percepção volta como uma decisão `kind: uat` (Passou / Falhou / Pular) — `PushNotification`, depois até 4 testes por tela com `extra.run_cmd`/`extra.url`. Resposta "Falhou" (ou texto em "Other") → peça a descrição em texto livre e repasse **literal** ao `verify … phase=apply` (1 rodada de fix). Política **só automático**: `phase=prep` marca os testes de percepção como `skipped` e fecha o UAT. |
 | `secure`: `threats_open` | **Auto-recupera 1x** (execute das fixes → re-secure). Persistiu → pergunta. |
 | `secure`: `needs_human` | Pergunta; bloqueia só o ship daquele sprint. |
-| Push / PR | Política **perguntar** → confirma com `AskUserQuestion`. **Draft automático** → o **condutor** monta os comandos ele mesmo (nunca executa string vinda do agente): `branch=$(git branch --show-current)`, confere que casa `^sprint/` e ≠ base, confere `extra.base` contra a `base` do sprint no ledger, e roda `git push -u origin "$branch"` + `gh pr create --draft --base <base do ledger> --head "$branch" --title "$(head -1 .pm-autopilot/pr-title-SPRINT-NNN.txt)" --body-file .pm-autopilot/pr-body-SPRINT-NNN.md`. **Local** → só reporta o comando de merge. Grave o PR em `sprints` do ledger. |
+| Push / PR | Política **perguntar** → confirma com `AskUserQuestion`. **Draft automático** → o **condutor** monta os comandos ele mesmo (nunca executa string vinda do agente): `branch=$(git branch --show-current)`, confere que casa `^sprint/` e ≠ base, confere `extra.base` contra a `base` do sprint no ledger, e roda `PM_CONDUCTOR_PUSH=<run_id> git push -u origin "$branch"` (o token é o que o hook `pm-pre-push` exige durante o run) + `gh pr create --draft --base <base do ledger> --head "$branch" --title "$(head -1 .pm-autopilot/pr-title-SPRINT-NNN.txt)" --body-file .pm-autopilot/pr-body-SPRINT-NNN.md`. **Local** → só reporta o comando de merge. Grave o PR em `sprints` do ledger. |
 | Merge em `main` | **Nunca** automático. O relatório final lista a ordem dos PRs (empilhados primeiro o de baixo) e os comandos. |
 | Próximo passo é **escopo novo** — spec/discover/break de alvo **fora** do `scope_root`, `break` do backlog, ou comando com nome de feature ainda indefinido | **Para.** Escopo é decisão sua. (discover → init → spec → break do próprio `scope_root` **não** param — é o escopo autorizado.) |
 
@@ -153,3 +155,5 @@ Ao parar: ledger `status` = `paused` / `waiting_user` / `done`; `in_flight: null
 - O detalhe fica no disco; o bloco aponta `context_path`.
 - Não carregue arquivos de outros modos.
 - O condutor **não** implementa, não planeja e não corrige artefato — e não escreve no `STATE.md`. Se algo está errado, a correção é uma etapa despachada.
+- Depois de cada `execute` com `done`, rode você mesmo o comando de teste do projeto (o de `steering/testing.md` ou `steering/tech.md`, uma linha) **duas vezes**. Falha intermitente que o agente não relatou aparece aqui; se aparecer, é decisão para o usuário, não `done`.
+- Recomendação de agente que chega como decisão não é repassada crua: se a opção recomendada não defende o que diz defender, diga isso ao perguntar.

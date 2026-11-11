@@ -22,7 +22,18 @@ CONFIGS = {
     "haiku":        ["--model", "claude-haiku-4-5"],
     "sonnet55-medium": ["--model", "claude-sonnet-5-5", "--effort", "medium"],
     "sonnet55-high":   ["--model", "claude-sonnet-5-5", "--effort", "high"],
+    "fable52-high":    ["--model", "claude-fable-5-2", "--effort", "high"],
+    "haiku55":         ["--model", "claude-haiku-5-5"],
 }
+
+# Controle "sem skill": a mesma entrada do /execute (spec, data-model, contracts, sprint e issues do snapshot
+# golden 05-plan), numa sessão comum, sem o project-maker instalado. Mede o que a orquestração
+# implementer → validator acrescenta sobre uma sessão única com o mesmo modelo e o mesmo plano.
+BASELINE_PROMPT = (
+    "Implemente o sprint descrito em {sprint}. As issues dele estão em docs/issues/, a especificação em "
+    "Spec.md, docs/data-model.md e docs/contracts/. Implemente todas as issues, escreva os testes que elas "
+    "pedem, rode os gates e faça um commit por issue. Não há humano disponível: decida e siga até o fim."
+)
 TIMEOUT = {"execute": 150 * 60, "break": 60 * 60}
 BUDGET = {"execute": "80", "break": "25"}
 
@@ -109,11 +120,11 @@ def wait_for_quota(poll=600, max_wait=6 * 3600):
                 raise RuntimeError("quota não voltou")
 
 
-def run_with_retry(stage, cfg, src, out, arg="", prep=None, max_retries=40):
+def run_with_retry(stage, cfg, src, out, arg="", prep=None, max_retries=40, prompt=None):
     """Roda; se bateu limite do plano, espera a cota voltar (sondando a cada 10 min) e refaz a etapa do zero."""
     for attempt in range(max_retries + 1):
         wait_for_quota()
-        s = run_stage(stage, cfg, src, out, arg, prep=prep)
+        s = run_stage(stage, cfg, src, out, arg, prep=prep, prompt=prompt)
         if not s.get("rate_limited"):
             return s
         (out.parent / f"{out.name}.ratelimit-{attempt}.md").write_text((out / "final.md").read_text())
@@ -121,14 +132,33 @@ def run_with_retry(stage, cfg, src, out, arg="", prep=None, max_retries=40):
     return s
 
 
-def run_stage(stage, cfg, src, out, arg="", extra_env=None, prep=None):
+def strip_skill(work):
+    """prep do controle: tira o skill e os agentes dele do projeto, mantendo os artefatos de planejamento."""
+    for d in (work / ".claude" / "skills" / "project-maker", work / ".claude" / "agents"):
+        if d.exists():
+            shutil.rmtree(d)
+    sh("git add -A && git -c user.email=bench@local -c user.name=bench commit -qm 'bench: sem skill' --allow-empty", work, check=False)
+
+
+def hidden_tests(work, hidden=None):
+    """Roda a suíte oculta contra um workdir e devolve {pass, fail, total}."""
+    hidden = Path(hidden) if hidden else B / "hidden-sprint001"
+    files = sorted(str(f) for f in hidden.glob("*.test.mjs"))
+    r = subprocess.run(["node", "--test", *files], capture_output=True, text=True,
+                       env=dict(os.environ, PROJECT_ROOT=str(Path(work).resolve())), timeout=20 * 60)
+    out = r.stdout + r.stderr
+    num = lambda k: int(m.group(1)) if (m := re.search(rf"^ℹ {k} (\d+)", out, re.M)) else None
+    return {"pass": num("pass"), "fail": num("fail"), "total": num("tests")}
+
+
+def run_stage(stage, cfg, src, out, arg="", extra_env=None, prep=None, prompt=None):
     out.mkdir(parents=True, exist_ok=True)
     work = out / "work"
     copy_snapshot(src, work)
     if prep:
         prep(work)
     start_sha = sh("git rev-parse HEAD", work).stdout.strip()
-    prompt = f"/project-maker {stage} {arg}".strip()
+    prompt = prompt or f"/project-maker {stage} {arg}".strip()
     cmd = ["claude", "-p", prompt, *CONFIGS[cfg],
            "--setting-sources", "project", "--strict-mcp-config",
            "--settings", json.dumps({"language": "portuguese"}),
@@ -207,6 +237,19 @@ if __name__ == "__main__":
     a = ap.parse_args()
     if a.cmd == "base":
         print(make_base())
+    elif a.cmd == "hidden":
+        # python3 bench.py hidden --src <workdir>
+        print(json.dumps(hidden_tests(a.src)))
+    elif a.cmd == "baseline":
+        # python3 bench.py baseline --src <golden/05-plan/work> --arg docs/sprints/SPRINT-001-….md --configs sonnet55-high
+        for cfg in a.configs.split(","):
+            for r in range(a.reps):
+                out = RUNS / f"execute-baseline{a.tag}" / f"{cfg}-r{r+1}"
+                s = run_with_retry("execute", cfg, Path(a.src), out, a.arg, prep=strip_skill,
+                                   prompt=BASELINE_PROMPT.format(sprint=a.arg))
+                s["hidden"] = hidden_tests(out / "work")
+                (out / "summary.json").write_text(json.dumps(s, indent=1, ensure_ascii=False))
+                print(json.dumps({k: s[k] for k in ("config", "rc", "wall_s", "cost_usd", "hidden")}, ensure_ascii=False), flush=True)
     elif a.cmd == "matrix":
         src = Path(a.src)
         jobs = []

@@ -49,10 +49,62 @@ check deny  "$(sub 'git reset -q --hard HEAD')"               "sub: reset -q --h
 check deny  "$(sub 'gh api repos/o/r/pulls --method=POST')"   "sub: gh api --method=POST"
 check deny  "$(sub 'gh api repos/o/r/pulls --field title=x')" "sub: gh api --field"
 check deny  "$(sub "git commit -m 'x; git push'")"            "sub: commit msg com ; git push (falso positivo seguro)"
+# formas que a v3.3 deixava passar
+check deny  "$(sub '/usr/bin/git push origin x')"             "sub: git por caminho absoluto"
+check deny  "$(sub 'env git push')"                           "sub: env git push"
+check deny  "$(sub 'FOO=1 git push')"                         "sub: VAR=1 git push"
+check deny  "$(sub 'if true; then git push; fi')"             "sub: then git push"
+check deny  "$(sub 'for b in x; do git push origin $b; done')" "sub: do git push"
+check deny  "$(sub 'time git push')"                          "sub: time git push"
+check deny  "$(sub 'echo x | xargs git push')"                "sub: xargs git push"
+check deny  "$(sub 'echo x | xargs -n1 git push origin')"     "sub: xargs -n1 git push"
+check deny  "$(sub '{ git push; }')"                          "sub: { git push; }"
+check deny  "$(sub 'sudo env A=1 git -C . push')"             "sub: prefixos empilhados"
+check deny  "$(sub 'git checkout .')"                         "sub: checkout ."
+check deny  "$(sub 'git restore .')"                          "sub: restore ."
+check allow "$(sub 'git restore --staged src/a.js')"          "sub: restore --staged de um arquivo"
+check allow "$(sub 'git checkout sprint/x')"                  "sub: checkout de branch"
+check deny  "$(sub 'git update-ref -d refs/heads/x')"         "sub: update-ref -d"
+check deny  "$(sub 'git config core.hooksPath /dev/null')"    "sub: core.hooksPath"
+check deny  "$(sub 'PM_CONDUCTOR_PUSH=AP-1 git push')"        "sub: token do condutor"
+check deny  "$(sub 'rm .git/hooks/pre-push')"                 "sub: apagar o pre-push"
+check deny  "$(sub 'npm run deploy')"                         "sub: npm run deploy"
+check deny  "$(sub 'npx vercel --prod')"                      "sub: vercel --prod"
+check deny  "$(sub 'wrangler deploy')"                        "sub: wrangler deploy"
+check deny  "$(sub 'supabase db push')"                       "sub: supabase db push"
+check deny  "$(sub 'terraform apply -auto-approve')"          "sub: terraform apply"
+check allow "$(sub 'npm run build && npm test')"              "sub: build e teste"
+check allow "$(sub 'grep -rn deploy docs/')"                  "sub: grep deploy"
+check allow "$(sub 'echo then git status')"                   "sub: then como argumento, sem push"
+check allow "$(main 'PM_CONDUCTOR_PUSH=AP-1 git push -u origin sprint/x')" "main: push com token"
+check deny  "$(main '/usr/bin/git push --force origin x')"    "main: caminho absoluto --force"
+check deny  "$(main 'env git push origin HEAD:main')"         "main: env push para main"
 # ledger no formato exato do ledger-template (com comentário na linha do conductor_sid)
 printf -- '---\nstatus: running            # comentário\nconductor_sid: "S1"          # $CLAUDE_CODE_SESSION_ID\n---\n' > "$T/.pm-autopilot/ledger.md"
 check allow "$(sub 'git push' 'OUTRA')"                       "template: ledger de outra sessão"
 check deny  "$(sub 'git push')"                               "template: mesma sessão"
 ledger done
 check allow "$(sub 'git push')"                               "ledger done"
+
+# --- hook git pre-push (scripts/pm-pre-push.sh): roda dentro do git, pega push vindo de qualquer lugar
+HOOK="$(cd "$(dirname "$0")" && pwd)/pm-pre-push.sh"
+R=$(mktemp -d); O=$(mktemp -d)
+git init -q --bare "$O/o.git"
+git init -q -b sprint/x "$R" && git -C "$R" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+git -C "$R" remote add origin "$O/o.git"
+cp "$HOOK" "$R/.git/hooks/pre-push" && chmod +x "$R/.git/hooks/pre-push"
+push() { local want="$1" desc="$2"; shift 2; ( cd "$R" && "$@" ) >/dev/null 2>&1; local got=$?; [ "$got" -ne 0 ] && got=1
+  if [ "$got" = "$want" ]; then echo "ok    exit=$got  $desc"; else echo "FAIL  esperado=$want obtido=$got  $desc"; fails=$((fails+1)); fi; }
+rledger() { mkdir -p "$R/.pm-autopilot"; printf -- '---\nrun_id: AP-1\nstatus: %s\n---\n' "$1" > "$R/.pm-autopilot/ledger.md"; }
+push 0 "pre-push: sem ledger, push livre"                    git push -q origin sprint/x
+rledger running
+push 1 "pre-push: run ativo, push sem token"                 git push -q origin sprint/x:refs/heads/a
+push 1 "pre-push: run ativo, push via python"                python3 -c "import subprocess,sys;sys.exit(subprocess.call(['git','push','-q','origin','sprint/x:refs/heads/b']))"
+push 1 "pre-push: token errado"                              env PM_CONDUCTOR_PUSH=AP-9 git push -q origin sprint/x:refs/heads/c
+push 0 "pre-push: token do run"                              env PM_CONDUCTOR_PUSH=AP-1 git push -q origin sprint/x:refs/heads/d
+push 1 "pre-push: token do run, mas para main"               env PM_CONDUCTOR_PUSH=AP-1 git push -q origin sprint/x:refs/heads/main
+rledger done
+push 0 "pre-push: run encerrado, push livre"                 git push -q origin sprint/x:refs/heads/e
+rm -rf "$R" "$O"
+
 echo "---"; [ "$fails" -eq 0 ] && echo "todos os casos passaram" || { echo "$fails caso(s) falharam"; exit 1; }

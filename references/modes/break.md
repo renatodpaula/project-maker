@@ -3,7 +3,7 @@
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 > **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `break` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Argumento:** caminho de uma spec (`docs/specs/FEAT-012-....md`), ou nada — neste caso o Passo 0 resolve o alvo.
+**Argumento:** caminho de uma spec (`Spec.md` do projeto ou `docs/specs/FEAT-NNN-[slug].md` de uma feature — regra **Localização canônica**), ou nada — neste caso o Passo 0 resolve o alvo.
 
 **Pré-requisito:** existir **alvo** — uma spec não quebrada ou backlog não agendado no `PRD.md`. Leia `Constitution.md` e `steering/` se existirem.
 
@@ -59,8 +59,12 @@ Para cada endpoint ou integração identificada na spec, gere um arquivo em `doc
 - Response: status codes, body de sucesso, body de erro
 - Autenticação e autorização necessárias
 
-**Passo 4 — Issues de prototype** (salvar em `docs/issues/prototype/`)
-Uma issue por página da Spec. Cada issue descreve apenas a parte visual — layout, componentes, estados visuais (loading, vazio, erro). Sem lógica de negócio, sem chamadas de API.
+**Passo 4 — Issues de prototype** (salvar em `docs/issues/prototype/`) — **só se a spec tem interface visual**
+Projeto sem telas (CLI, biblioteca, API, pipeline de dados, automação): pule este passo; todas as issues são funcionais.
+
+Com interface: uma issue por página da Spec. Cada issue descreve apenas a parte visual — layout, componentes, estados visuais (loading, vazio, erro). Sem lógica de negócio, sem chamadas de API.
+
+**Fatia vertical primeiro.** O primeiro sprint entrega um caminho ponta a ponta fino e que roda de verdade (uma tela ou comando → lógica → dado persistido → resposta), não uma camada inteira. Não agrupe "todos os prototypes" num sprint e "toda a lógica" em outro: cada sprint junta o prototype e as issues funcionais do mesmo fluxo, para que o Milestone Gate de cada um verifique comportamento real e os erros de integração apareçam no sprint 1, não no último.
 
 No header de cada issue, inclua:
 ```
@@ -137,6 +141,16 @@ _Última atualização: [data]_
 
 Status de sprint: `🔲 planned` · `🔄 in-progress` · `⏸ pending-review` · `✅ done`
 Status de issue: `🔲 pendente` · `🔄 em progresso` · `⏸ blocked` · `✅ entregue`
+
+**Passo 8 — Sensores de fechamento (rode antes do handoff)**
+
+```bash
+python3 <skill-dir>/scripts/pm.py coverage [path da spec]            # todo REQ-N tem issue que o implementa?
+python3 <skill-dir>/scripts/pm.py waves docs/sprints/SPRINT-NNN-[slug].md   # um por sprint: colisão de arquivo na mesma wave, issue fora de wave
+```
+
+- `coverage` com exit 1 lista os REQs sem issue e os `Implements` que citam REQ inexistente. Crie a issue que falta ou corrija o header; REQ deixado de fora de propósito vai para `### Backlog não agendado` do PRD com o motivo, e a issue-fantasma não é a saída. (Break de backlog, sem spec: pule o `coverage`.)
+- `waves` só confere colisão das issues que já têm `Arquivos a criar/modificar` (o `/plan` preenche); neste ponto ele garante que toda issue do sprint está em alguma wave e que as referências casam com arquivos reais. O `/plan` de sprint roda de novo com as listas de arquivos.
 
 **Ao final:** liste sprints com suas issues e indicação de paralelismo, cite os artefatos gerados (research.md, data-model.md, contracts/, sprints/, issues/, PRD.md) e feche com o **Bloco de Handoff** (regra Next Command).
 

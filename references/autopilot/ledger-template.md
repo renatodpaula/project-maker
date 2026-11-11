@@ -5,7 +5,7 @@ conductor_sid: ""          # $CLAUDE_CODE_SESSION_ID da sessão que conduz
 scope_root: Spec.md        # o que este run está autorizado a construir (spec ou brief.md)
 profile: balanced          # econ | balanced | max
 until: sprint              # spec | break | sprint | all
-guard: off                 # on | off — pm-guard.sh instalado?
+guard: off                 # on (pm-guard + pre-push) | pre-push-only | off
 stage_agents: registered   # registered | fallback (general-purpose) — model/effort vão na chamada nos dois casos
 policies:
   ship: ask                # draft-auto | ask | local

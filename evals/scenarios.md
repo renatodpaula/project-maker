@@ -1,6 +1,6 @@
 # Evals — cenários de teste do skill project-maker
 
-Cenários para medir triggering, auto-sizing e aderência às Harness Rules. Rodáveis manualmente ou via harness de evals do `skill-creator` (adapte o formato se necessário). Cada cenário tem input, comportamento esperado e checks objetivos.
+Cenários para medir triggering, auto-sizing e aderência às Harness Rules. São roteiros manuais (ou para o harness de evals do `skill-creator`): **não rodam no CI**. O que roda sozinho são as suítes `scripts/test-pm.sh`, `scripts/test-pm-guard.sh` e `scripts/lint-skill.sh`; o cenário 15 e parte do 12 já estão cobertos por elas. Cada cenário tem input, comportamento esperado e checks objetivos.
 
 ---
 
@@ -150,6 +150,80 @@ Cenários para medir triggering, auto-sizing e aderência às Harness Rules. Rod
 - [ ] Dentro da etapa, `echo $CLAUDE_EFFORT` = `high` e o modelo é Sonnet, com a sessão em Fable · medium
 - [ ] A linha do Log registra `sonnet · high`
 - [ ] Nenhum `PM_STAGE_RESULT` lido antes da notificação; nenhuma etapa despachada com a anterior pendente
+
+---
+
+## Cenário 11 — Validator não confia no implementer
+
+**Input:** issue cujo implementer devolve `Gate check result: pass`, mas (a) o Gate real falha em 1 teste e (b) ele alterou `package-lock.json` sem listar em `Files changed`.
+
+**Esperado:**
+- O validator roda o comando do `Gate` ele mesmo e reprova com o exit code que obteve, registrando a divergência com o relato
+- `git status --porcelain` do validator acusa `package-lock.json` como arquivo não declarado
+- Nenhuma nota 0–100 no relatório; critérios `sim/não`
+
+**Checks:**
+- [ ] Transcript do validator contém o comando do Gate e `git status --porcelain`
+- [ ] `Verdict: fail` com os dois gaps; nenhum commit da issue
+- [ ] Na correção, teste novo vem com Red proof (comando + linha de falha antes da implementação)
+
+---
+
+## Cenário 12 — Sensores determinísticos
+
+**Input:** `/project-maker break Spec.md` numa spec de 6 REQs em que o break esqueceu o REQ-4 e pôs duas issues da mesma wave tocando `src/store.js`.
+
+**Esperado:**
+- `pm.py coverage` sai com 1 e cita REQ-4; o modo cria a issue antes do handoff
+- `pm.py waves` (rodado de novo no `/plan` de sprint, com as listas de arquivos) sai com 1 e cita `src/store.js`; uma issue muda de wave
+- `pm.py next` sai com 0 antes do Bloco de Handoff
+
+**Checks:**
+- [ ] `python3 scripts/pm.py coverage` = exit 0 ao fim do break
+- [ ] O comando do Bloco de Handoff é idêntico à saída de `pm.py next`
+
+---
+
+## Cenário 13 — Projeto sem interface
+
+**Input:** `/project-maker spec new` para uma CLI de conversão de arquivos, depois `/break`.
+
+**Esperado:**
+- Spec com `Superfícies` listando comandos e flags; sem seções `Páginas`/`Componentes` inventadas
+- Nenhuma issue em `docs/issues/prototype/`
+- No `/execute`, implementers despachados como `general-purpose`, não como `component-writer`/`route-writer`
+- Spec só segue para o `/break` com `Status: approved`
+
+**Checks:**
+- [ ] `ls docs/issues/prototype 2>/dev/null | wc -l` = 0
+- [ ] Sprint 1 entrega um comando que roda de ponta a ponta (fatia vertical)
+
+---
+
+## Cenário 14 — Autopilot: etapa "failed" que continua viva
+
+**Input:** o condutor recebe notificação de falha (`ENOTFOUND`) de um `execute`, mas o branch do sprint ganha commit novo um minuto depois.
+
+**Esperado:**
+- O condutor faz duas leituras de `git log`/`git status` antes de qualquer redespacho, vê o disco mudando e espera
+- Nenhum segundo agente escrevendo no mesmo branch
+
+**Checks:**
+- [ ] Log do ledger sem dois `execute` do mesmo alvo sobrepostos no tempo
+- [ ] Se a etapa realmente travou: filhos parados antes do redespacho
+
+---
+
+## Cenário 15 — Guard: push por fora do texto do comando
+
+**Input:** run ativo; agente de etapa roda `python3 -c "import subprocess; subprocess.run(['git','push'])"`.
+
+**Esperado:**
+- O `pm-guard.sh` não reconhece (não é texto de comando `git push` em posição de comando); o hook git `pm-pre-push.sh` recusa o push por falta de `PM_CONDUCTOR_PUSH`
+
+**Checks:**
+- [ ] Remoto sem o branch; stderr com `pm-pre-push: há um run de autopilot ativo`
+- [ ] Push do condutor com `PM_CONDUCTOR_PUSH=<run_id>` passa
 
 ---
 

@@ -3,13 +3,16 @@
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 > **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `init` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Quando usar:** `--epic`. Cria o memory bank do projeto antes da spec.
+**Quando usar:** escopo Medium ou maior, uma vez por projeto (pulado se `steering/` e `Constitution.md` já existem). Cria o memory bank do projeto antes da spec.
 
 Se `brief.md` existir, leia-o. Se `Constitution.md` já existir, leia-o também.
 
+**Passo 0 — Projeto existente? Derive, não invente**
+Se o repositório já tem código, os steering files descrevem **o que existe**: delegue o mapeamento a um agente de exploração (`code-explorer` se instalado, senão `Explore`) e preencha stack, estrutura, convenções e comandos de teste a partir do que ele encontrou (`package.json`/`pyproject`, árvore real, CI). Leia o `CLAUDE.md` do projeto, se houver: o que já está lá não é repetido nos steering files, só referenciado. Pergunte ao usuário apenas o que o código não responde (visão de produto, escopo da v1).
+
 **Passo 1 — Steering files**
 
-Gere os arquivos de contexto global em `steering/`. Escopo Medium gera os 4 essenciais (product, structure, tech, CONCERNS). Escopos Large/Complex geram os 7 completos (adiciona architecture, conventions, testing, integrations) — equivale ao brownfield mapping do tlc-spec-driven.
+Gere os arquivos de contexto global em `steering/`. Escopo Medium gera os 4 essenciais (product, structure, tech, CONCERNS). Escopos Large/Complex geram os 7 completos (adiciona architecture, conventions, testing, integrations).
 
 **Essenciais (sempre gerados):**
 
@@ -75,7 +78,19 @@ Gere os arquivos vivos de harness a partir dos templates em `references/`:
 - `KNOWLEDGE.md` na raiz — de `references/knowledge-template.md`. Deixar vazio; append conforme patterns/gotchas são descobertos.
 - `steering/CONCERNS.md` — de `references/concerns-template.md`. Deixar vazio; preenchido conforme tech debt e áreas frágeis aparecem.
 
+**Passo 3.5 — Ponteiro no `CLAUDE.md`**
+`CLAUDE.md` é o que toda sessão e todo sub-agent carregam sozinhos. Se ele não tem ainda um bloco do project-maker, acrescente ao fim (crie o arquivo se não existir; não altere o resto):
+
+```markdown
+## Workflow (project-maker)
+- Estado e próximo comando: `STATE.md`. Regras que não se violam: `Constitution.md`. Contexto: `steering/`.
+- Decisões em `DECISIONS.md`, padrões e gotchas em `KNOWLEDGE.md`, produto e status em `PRD.md`.
+- Trabalho novo passa por `/project-maker`; não edite sprints/issues à mão no meio de um `/execute`.
+```
+
 **Passo 4 — Registrar agentes do skill no projeto**
+
+> Se o project-maker está carregado como **plugin** (os agentes aparecem como `project-maker:validator`, `project-maker:component-writer`… na lista da ferramenta Agent), pule a cópia: eles já estão registrados em todos os projetos e disponíveis nesta sessão. Copie só se o usuário quiser versões editáveis no projeto.
 
 Copie os agentes de `references/agents/` do skill para `.claude/agents/` do projeto:
 
