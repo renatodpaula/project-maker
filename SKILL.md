@@ -1,22 +1,24 @@
 ---
 name: project-maker
-author: Renato de Paula Cardoso <renato@renatodpaula.com.br>
-homepage: https://github.com/renatodpaula/project-maker
-instagram: https://instagram.com/renatodpaula.ai
 license: MIT
+metadata:
+  author: Renato de Paula Cardoso <renato@renatodpaula.com.br>
+  homepage: https://github.com/renatodpaula/project-maker
+  instagram: https://instagram.com/renatodpaula.ai
+  version: 3.4.0
 description: |
-  Workflow Spec-Driven Development para criar projetos ou adicionar features com IA de forma estruturada.
-  Use este skill quando o usuário quiser organizar uma ideia de projeto, fazer brainstorming, criar um
-  projeto do zero, planejar uma nova feature, quebrar uma spec em tarefas, pesquisar e planejar uma
-  issue, ou executar uma implementação. Sempre use antes de começar qualquer projeto ou feature nova.
-  Triggers explícitos: "criar projeto", "nova feature", "quero construir algo", "organizar minha ideia",
-  "brainstorming de projeto", "planejar implementação", "quebrar em issues", "implementar issue",
-  "validar feature", "testar feature", "revisar segurança", "criar PR", "abrir pull request",
-  "qual modelo rodar", "recomendar modelo", "que modelo uso",
-  "qual o próximo passo do projeto", "qual o próximo passo do sprint", "qual o comando do próximo passo",
-  "como continuo o sprint", "como continuo o projeto",
-  "autopilot", "piloto automático", "modo automático", "rodar as etapas sozinho", "sem precisar dar /clear",
-  "/discover", "/init", "/spec", "/break", "/plan", "/execute", "/verify", "/secure", "/ship", "/build", "/autopilot".
+  Workflow Spec-Driven Development para criar projetos ou adicionar features com IA de forma estruturada:
+  brief, spec com requisitos verificáveis, sprints e issues, execução com implementer e validator separados,
+  UAT, gate de segurança e PR. Use quando o usuário quiser organizar uma ideia de projeto, criar um projeto
+  do zero, especificar ou planejar uma feature de porte médio ou maior, quebrar uma spec em issues, executar
+  um sprint, validar ou revisar a segurança de uma entrega do workflow, abrir o PR de um sprint, ou perguntar
+  qual o próximo passo/comando/modelo de um projeto que já usa o workflow (tem STATE.md ou docs/sprints/).
+  Não use para correção pontual ou pergunta avulsa em projeto que não usa o workflow.
+  Invocação: /project-maker <modo> [alvo], modos discover, init, spec, break, plan, execute, verify, secure,
+  ship, build, pause, resume, autopilot. Frases típicas: "criar projeto", "nova feature", "organizar minha
+  ideia", "quebrar em issues", "implementar issue", "executar o sprint", "qual o próximo passo do sprint",
+  "qual modelo rodar". O autopilot só com pedido explícito: "autopilot", "piloto automático", "modo
+  automático", "rodar as etapas sozinho", "sem precisar dar /clear".
 ---
 
 # Project Maker
@@ -92,7 +94,7 @@ Workflow estruturado de Spec-Driven Development para construir projetos com IA s
 
 **Bloco de Handoff no fim de todo modo:** todo modo termina entregando o **comando completo do próximo passo**, com o path real resolvido do disco (`/project-maker execute docs/sprints/SPRINT-031-resposta-por-whatsapp.md`, nunca `[sprint]`), pronto pra copiar, mais a recomendação de modelo na mesma caixa. O usuário nunca precisa perguntar "qual o comando agora?". Ver regras **Next Command** e **Model Advisor** nas Harness Rules.
 
-**Hierarquia de trabalho (regra de ferro):**
+**Hierarquia de trabalho:**
 
 ```
 Projeto → Sprint → Issue
@@ -139,7 +141,7 @@ Feature/sprint/issue (paths conforme regra **Localização canônica**):
 
 ## Harness Rules (leitura obrigatória antes de qualquer modo)
 
-Este skill segue princípios de **Harness Engineering**: o modelo é só a LLM; o harness é tudo o que fica em volta — instruções, estado em disco, sensores de verificação, regras de delegação. As regras abaixo são inegociáveis.
+Este skill segue princípios de **Harness Engineering**: o modelo é só a LLM; o harness é tudo o que fica em volta — instruções, estado em disco, sensores de verificação, regras de delegação. Cada regra abaixo existe porque a ausência dela já causou uma falha concreta; a razão vem junto.
 
 ### Living Docs — papéis separados
 
@@ -157,7 +159,8 @@ Três arquivos vivos com churn e propósito diferentes. **Não misturar conteúd
 
 Todo artefato tem um lugar único — duas sessões nunca podem criar o mesmo artefato em diretórios diferentes.
 
-- **Raiz do projeto:** `STATE.md`, `DECISIONS.md`, `KNOWLEDGE.md`, `PRD.md`, `Spec.md`, `Constitution.md`, `brief.md`, `context.md`, `steering/`.
+- **Raiz do projeto:** `STATE.md`, `DECISIONS.md`, `KNOWLEDGE.md`, `PRD.md`, `Constitution.md`, `brief.md`, `steering/`.
+- **Specs:** a spec do projeto (`/spec new`) é `Spec.md` na raiz, com `context.md` ao lado. Cada feature (`/spec feature`) é um arquivo próprio, `docs/specs/FEAT-NNN-[slug].md`, com o Discuss em `docs/specs/FEAT-NNN-[slug].context.md`. Uma feature nova nunca sobrescreve `Spec.md` nem a spec de outra feature. NNN = maior número existente em `docs/specs/` + 1.
 - **`docs/` (padrão):** artefatos de planejamento — `docs/research.md`, `docs/data-model.md`, `docs/contracts/`, `docs/sprints/`, `docs/issues/`.
 - **Por sprint:** UAT e SECURITY acompanham o sprint — `docs/sprints/SPRINT-NNN-uat.md`, `docs/sprints/SPRINT-NNN-SECURITY.md`. Em `--quick`, ao lado da issue.
 
@@ -179,11 +182,13 @@ Em **todo comando**, antes de executar qualquer passo:
 
 **`Next command` do STATE.md**: sempre que gravar `STATE.md`, escreva nos campos `Next command` e `Next model` **exatamente** o comando e o modelo emitidos no Bloco de Handoff — path real, copiável. É o que faz o comando sobreviver ao `/clear`: qualquer sessão nova (ou `/resume`) lê o campo e reemite o bloco sem redescobrir nada.
 
+**`CLAUDE.md` do projeto:** já está no contexto de toda sessão e de todo sub-agent. `Constitution.md` e `steering/` não repetem o que está lá; em conflito, pergunte ao usuário qual vale e corrija o outro. O `/init` deixa no `CLAUDE.md` um ponteiro curto para os artefatos do workflow.
+
 Se algum desses arquivos não existir ainda, criá-lo a partir do template correspondente em `references/` na primeira execução que encontrar um projeto inicializado.
 
 ### Context Loading Strategy
 
-**Base load (~15k tokens):** Constitution.md, steering/, STATE.md, PRD.md quando relevante.
+**Base load:** Constitution.md, steering/, STATE.md, PRD.md quando relevante.
 
 **On-demand load:**
 - `references/modes/[modo].md` — só o modo que vai executar agora
@@ -193,18 +198,18 @@ Se algum desses arquivos não existir ainda, criá-lo a partir do template corre
 - `docs/research.md` — só no /plan e /execute da issue que depende dele
 - Uma issue por vez
 
-**Never load simultaneously:**
+**Não carregue ao mesmo tempo:**
 - Múltiplos specs de feature
 - Todos os contracts de uma vez
 - Issues de outros épicos
 - Arquivos arquivados
 - Arquivos de modo que não vão rodar nesta sessão
 
-**Target:** <40k tokens de contexto ativo. **Reserva:** 160k+ para trabalho, raciocínio e output. Se passar de 40k, priorize descarregar docs que não são mais necessárias para a task atual.
+A maior parte da janela fica para trabalho, raciocínio e output. Você não mede tokens: a regra prática é carregar só o que a tarefa atual consome e passar **paths**, não conteúdo, para sub-agents.
 
 ### Knowledge Verification Chain
 
-Quando for pesquisar, desenhar ou tomar qualquer decisão técnica, siga esta ordem estrita. **Nunca pule passos.**
+Quando for pesquisar, desenhar ou tomar qualquer decisão técnica, siga esta ordem:
 
 1. **Codebase** — código existente e convenções já em uso
 2. **Project docs** — README, docs/, comentários inline, steering/
@@ -213,9 +218,8 @@ Quando for pesquisar, desenhar ou tomar qualquer decisão técnica, siga esta or
 5. **Flag como incerto** — "Não tenho certeza sobre X, aqui está meu raciocínio, mas verifique"
 
 **Regras:**
-- Nunca pular para o passo 5 se 1-4 estão disponíveis
-- Passo 5 é SEMPRE flageado como incerto, nunca apresentado como fato
-- **NEVER assume or fabricate.** Se não encontrou uma resposta, diga "não sei" ou "não achei documentação para isto". Inventar APIs, padrões ou comportamentos causa cascata de falhas no design → tasks → implementação. **Incerteza é sempre preferível a fabricação.**
+- O passo 5 só vale quando 1-4 não resolveram, e sai marcado como incerto, não como fato.
+- Não achou resposta: diga "não sei" ou "não achei documentação para isto". Uma API ou comportamento inventado contamina design, issues e implementação em cascata; incerteza declarada custa uma pergunta.
 
 ### Sub-Agent Delegation
 
@@ -231,18 +235,19 @@ Use sub-agents (Task tool ou equivalente) para manter o contexto do agente orque
 | `/plan` de **sprint** (enriquecer N issues) | Sim (1 sub-agent por issue, em paralelo) | As issues são independentes depois da pesquisa externa única; o orquestrador confere colisões no fim |
 | Tarefas em modo `--quick` | Não | Overhead não compensa |
 
-**Despacho e espera (regra dura).** A ferramenta Agent roda os sub-agents em **background** e entrega o resultado por **notificação** (verificado no 2.1.322 em sessão interativa, dentro de sub-agente e em `claude -p`). O parâmetro `run_in_background` só existe em algumas superfícies (visto no `claude -p`; ausente na sessão interativa e dentro de sub-agente), então a regra vale pelo comportamento, não pelo parâmetro:
+**Despacho e espera.** A ferramenta Agent entrega o resultado por notificação; o agente pode estar em background mesmo sem você pedir.
 
-1. Paralelismo = **várias chamadas Agent na mesma mensagem**.
+1. Paralelismo = várias chamadas Agent na mesma mensagem.
 2. Se o schema da sua ferramenta Agent tem `run_in_background`, passe `false`. Se não tem, não invente o parâmetro.
-3. Depois de despachar, **espere a notificação de cada sub-agent** antes de usar o resultado. Nunca relate, suponha nem valide um resultado que ainda não chegou. Conte: N despachados, N recebidos.
-4. **Nenhum fechamento com filho pendente.** O Bloco de Handoff (manual) e o `PM_STAGE_RESULT` (agente de etapa) só saem depois que todos voltaram. Encerrar o turno para aguardar a notificação é o caminho normal; emitir o fechamento do modo antes dela é o bug.
+3. Espere a notificação de cada sub-agent antes de usar o resultado. Conte: N despachados, N recebidos. Não relate nem valide resultado que ainda não chegou.
+4. Nenhum fechamento com filho pendente: o Bloco de Handoff e o `PM_STAGE_RESULT` só saem depois que todos voltaram. Encerrar o turno para aguardar a notificação é o caminho normal.
+5. Filho que não volta: antes de dar por morto ou redespachar, olhe o disco (`git log`, `git status`) por alguns minutos. Se há commits ou arquivos mudando, ele está vivo. Ao desistir de um filho, pare-o (TaskStop, se disponível) — um agente abandonado continua gastando.
 
-Histórico: no 2.1.282 um `/execute` headless terminou com 2 de 10 issues e 5 agentes mortos. No 2.1.322 a sonda (2 filhos com `sleep`, em `claude -p` e dentro de um sub-agente) recebeu os dois resultados.
+**Despacho explícito.** Toda chamada Agent do skill leva `model` e `effort` da tabela **Roteamento por etapa**, mesmo com agente registrado. Sem `model`, o agente genérico herda o modelo da sessão; sem `effort`, herda o de quem despachou. Padrão: `model: "sonnet"`, `effort: "high"`.
 
-**Despacho explícito (regra dura).** Toda chamada Agent do skill leva `model` **e** `effort` da tabela **Roteamento por etapa**, mesmo quando o agente é registrado. Sem `model`, o agente genérico herda o modelo da sessão (sessão em Fable = sprint inteiro em Fable); sem `effort`, herda o effort de quem despachou. Padrão quando a tabela não diz outra coisa: `model: "sonnet"`, `effort: "high"`. Verificado no 2.1.322: o `effort` por chamada vence o do frontmatter (agente com `effort: high` despachado com `low` rodou em `low`); `general-purpose` com `model: "sonnet"` + `effort: "medium"` rodou em Sonnet · medium; filho despachado sem `effort` herdou o do pai.
+**Profundidade.** Cadeia máxima: sessão → sub-agent → sub-agent. No autopilot isso é condutor → agente de etapa → implementer/validator, então implementer, validator e os sub-agents do `/plan` não delegam: exploram direto com Grep/Glob/Read.
 
-**Profundidade.** Sub-agente de 1º nível tem a ferramenta Agent; o de 2º nível não tem (verificado no 2.1.322, com filho em Haiku). Cadeia máxima: sessão → sub-agent → sub-agent. No autopilot isso é condutor → agente de etapa → implementer/validator, então implementer, validator e os sub-agents do `/plan` **não delegam**: exploram direto com Grep/Glob/Read.
+As sondas e versões por trás destas regras estão em `references/harness-notes.md`.
 
 **Contexto mínimo que cada sub-agent recebe:**
 - A definição específica da issue (Descrição, Cenários, Done when, Tests, Gate, Arquivos a criar/modificar, Padrões)
@@ -263,17 +268,18 @@ O orquestrador usa isso para atualizar STATE.md, PRD.md e decidir o próximo pas
 
 **Agentes registrados vs. prompt-colado:** os agentes de `references/agents/` têm frontmatter Claude Code (`name`, `tools`, `model`). Instalados em `.claude/agents/` do projeto (`/init` Passo 4), viram `subagent_type` nativo — restrição de tools por harness de verdade (`model` e `effort` vão na chamada — regra **Despacho explícito**). Não instalados, o fallback é ler o .md e usar como prompt de sub-agent genérico. Prefira sempre o registrado quando existir.
 
-**Workflow tool (opt-in):** se a sessão tem o Workflow tool e o usuário **pediu explicitamente** orquestração multi-agente (ex: "ultracode", "use um workflow"), as waves do `/execute` podem rodar via `pipeline()` (implementer → validator por issue; o `/execute` comum já roda sem barreira entre issues). Nunca use Workflow sem esse opt-in — o Agent tool comum cobre o caso padrão. **Não use Workflow para o autopilot:** agentes de workflow não têm a ferramenta Agent (verificado no 2.1.282; **não reverificado** no 2.1.322 — a sonda exige opt-in de workflow), então um `/execute` dentro deles não conseguiria despachar implementer/validator. O autopilot usa a ferramenta Agent da sessão principal.
+**Workflow tool (opt-in):** só com pedido explícito do usuário por orquestração multi-agente. Aí as waves do `/execute` podem rodar via `pipeline()` (implementer → validator por issue). Não use Workflow para o autopilot: na última sonda os agentes de workflow não tinham a ferramenta Agent.
 
-**Agentes de etapa (autopilot):** `pm-stage-workhorse` e `pm-stage-reasoning`, em `references/agents/`, são **opcionais**. O condutor passa `model` e `effort` em toda chamada (regra **Despacho explícito**), então a etapa roda no modelo e effort da tabela com o agente registrado ou com o fallback `general-purpose` — não existe mais portão de effort nem necessidade de reiniciar a sessão. Registrados (`scripts/install.sh` ou `/init`), só poupam repetir o papel no prompt.
+**Agentes de etapa (autopilot):** `pm-stage-workhorse` e `pm-stage-reasoning` são opcionais. Como `model` e `effort` vão em toda chamada, a etapa roda igual com o agente registrado ou com `general-purpose`.
 
 ### Gate Check 0/1 (sensor externo)
 
-Toda issue tem um campo `Gate` com um comando shell. O agente **NUNCA** pode marcar uma issue como done sem:
+Toda issue tem um campo `Gate` com um comando shell. Uma issue só fecha quando:
 
-1. Rodar o comando do Gate
-2. Obter exit code **0**
-3. Registrar o resultado no `Summary` da issue
+1. O **validator** rodou o comando do Gate ele mesmo (o resultado relatado pelo implementer é alegação, não evidência)
+2. Obteve exit code **0**
+3. Conferiu `git status` contra os `Files changed` declarados — arquivo alterado e não declarado reprova
+4. O resultado foi registrado no `Summary` da issue
 
 Se o Gate falhar:
 - Tentar corrigir e rodar de novo
@@ -282,99 +288,49 @@ Se o Gate falhar:
 
 ### Skill Integrations
 
-Este skill coexiste com outros skills instalados no ambiente. Antes de tarefas específicas, **sempre cheque se um skill complementar está instalado** e delegue quando disponível. Mostre recomendação de instalação no máximo **1x por sessão** para não virar ruído.
+Antes de uma tarefa da tabela, veja se o skill complementar está instalado e delegue; senão siga com o fallback. Recomende instalação no máximo uma vez por sessão.
 
-| Tarefa | Skill preferido (se instalado) | Fallback |
+| Tarefa | Preferido (se instalado) | Fallback |
 |---|---|---|
-| Pesquisa na web, scraping, research | `firecrawl` / `firecrawl-search` / `firecrawl-scrape` | WebSearch / WebFetch |
+| Pesquisa na web | `firecrawl` | WebSearch / WebFetch |
 | Docs de libs atualizados | `Context7` MCP | Web search |
-| Exploração de codebase | `codenavi` | agente `code-explorer` + Grep/Glob |
-| Diagramas (arquitetura, fluxo, ER) | `mermaid-studio` | mermaid inline em markdown |
-| Review de segurança | `security-review` | validator + checklist manual |
-| Quando trabalhar com plano explicitamente | `claude-mem:make-plan` + `claude-mem:do` | execução direta |
+| Exploração de codebase | agente `code-explorer` (feature-dev) | agente nativo `Explore` + Grep/Glob |
+| Diagramas | `mermaid-studio` | mermaid inline em markdown |
+| Review de segurança | `security-review` | checklist do `references/security-template.md` |
+| Review do diff antes do PR | `code-review` | validator por issue |
 
-Checar disponibilidade é barato — se o skill não está instalado, só continue com o fallback. Se o usuário parecer experiente ou já tiver acusado recebimento, pule a recomendação.
+### Model Advisor — modelo e effort por etapa
 
-### Model Advisor — modelo e effort por etapa (medido)
-
-Cada etapa tem um perfil de trabalho diferente, e rodar o modelo certo muda custo, tempo e qualidade. A recomendação abaixo é **medida, não intuída**: benchmark de 2026-09 (Claude Code 2.1.282) rodando cada modo do skill em 5 configurações sobre o mesmo insumo congelado, com 3 juízes cegos por etapa, testes de aceitação ocultos no `/execute`, 5 vulnerabilidades plantadas no `/secure` e 2 bugs plantados no `/verify`. Método e harness em `evals/model-bench/`. Nomes de modelo mudam — quando sair modelo novo, **remeça** em vez de supor.
-
-**Versão do modelo:** o skill usa os aliases `sonnet`, `opus` e `fable` (frontmatter dos agentes e override por chamada), que o Claude Code resolve para a versão mais recente — modelo novo entra sem editar nada aqui. Os textos de recomendação dizem só "Sonnet"/"Opus"/"Fable"; os números de versão (Sonnet 5, Opus 5.5, Fable 5.1) aparecem apenas nos **resultados do benchmark**, que valem para a versão medida. Versão nova não medida herda o perfil por analogia até alguém remedir (`evals/model-bench/`).
-
-**O que o benchmark mostrou:**
-- **Sonnet 5 · effort high** ficou em 1º ou 2º em todas as etapas, pelo menor custo entre os que acertam: spec 90,7/100 (Fable 88,8 na média de 2 runs — 92,9 e 84,6 —, a 4,5× o custo), break 88,5 (Fable 91,5 a 2,7×), execute 88/88 testes ocultos (empate com Opus), secure 5/5 vulnerabilidades (empate) pela metade do custo do Opus e 1/7 do Fable, verify 2/2 bugs com causa-raiz exata.
-- **Sonnet 5.5 · high vs medium** (remedida em 2026-10, só discover/init/spec/plan, 1 run por célula, 3 juízes cegos): high 92,4 de média contra 88,1 do medium e 84,1 do Sonnet 5 · high re-rodado no mesmo insumo. O medium custou 30% menos e levou ~60% do tempo, mas perde no init (82 vs 89) e no spec (84,7 vs 93,0); empata com o high em discover e plan. A diferença média (4,3 pontos) fica dentro do ruído de uma run por célula (o próprio Sonnet 5 · high variou 6 pontos entre as rodadas), e o auditor de fidelidade não achou contradição com o dono em nenhum dos dois. **High** segue como padrão; nenhum perfil novo até medir execute em medium. Não cobre break/execute/secure/verify.
-- **Effort pesa mais que o modelo.** Opus 5.5 em xhigh custou 2–3× e levou 3–5× mais tempo que em medium, sem ganho consistente (só venceu no init: 95 vs 89 do Sonnet).
-- **Opus 5.5 · medium é o mais rápido** (break 13 min vs 20; execute do sprint em ~13 min) **mas perde fidelidade na captura de requisitos**: no spec contrariou uma resposta explícita do usuário e ampliou escopo (76 vs 91).
-- **Fable 5.1** só venceu no break (+3 pontos, a 2,7× o custo); no spec teve variância alta entre runs (92,9 e 84,6) e média abaixo do Sonnet.
-- **Haiku 4.5 não segue as regras do skill**: no `/plan` marcou `Done when` como cumprido numa issue sem código (46–55/100); spec 44. Só aguenta etapa mecânica (ship).
+Padrão do skill: **Sonnet · effort high em todas as etapas** (perfil `balanced`). O skill usa os aliases `sonnet`, `opus` e `fable`, que o Claude Code resolve para a versão mais recente. As medições, o custo por etapa, a escolha de perfil e os **limites do benchmark** (um fixture, uma run por célula, sem controle "sem skill") estão em `references/model-advisor.md` — leia antes de justificar uma recomendação com número.
 
 #### Roteamento por etapa
 
-Células = `modelo · effort`. **balanced** é o padrão do modo manual e do autopilot. No autopilot o condutor passa `model` e `effort` da célula em **toda** chamada (regra **Despacho explícito**); `workhorse` (`pm-stage-workhorse`) e `reasoning` (`pm-stage-reasoning`) são só o `subagent_type` preferido quando registrados — sem eles, `general-purpose` com os mesmos `model`/`effort`.
+Células = `modelo · effort`. No autopilot o condutor passa `model` e `effort` da célula em toda chamada (regra **Despacho explícito**).
 
 | Etapa | econ | balanced (padrão) | max |
 |---|---|---|---|
-| discover, init | Sonnet · high | Sonnet · high | discover Sonnet · high · init Opus · xhigh¹ |
-| spec | Sonnet · high | Sonnet · high | Sonnet · high |
-| break | Sonnet · high | Sonnet · high | Fable · high (`reasoning`) |
-| plan | Sonnet · high | Sonnet · high | Sonnet · high |
+| discover, spec, plan, verify, secure, ship | Sonnet · high | Sonnet · high | Sonnet · high |
+| init | Sonnet · high | Sonnet · high | Opus · xhigh |
+| break | Sonnet · high | Sonnet · high | Fable · high |
 | execute (orquestrador, implementers, validator) | Sonnet · high | Sonnet · high | Sonnet · high |
-| issue com `Model hint: Opus/Fable` | Sonnet (não escala) | Opus · high² | Fable · high |
-| 3ª tentativa de uma issue (escalada por falha⁵) | um degrau acima | um degrau acima | um degrau acima |
-| verify, secure, ship | Sonnet · high³ | Sonnet · high | Sonnet · high⁴ |
+| issue com `Model hint: Opus/Fable` | Sonnet (não escala) | Opus · high | Fable · high |
+| 3ª tentativa de uma issue (escalada por falha) | um degrau acima | um degrau acima | um degrau acima |
 | **Autopilot:** `max_stages` por run | 12 | 30 | 60 |
 | **Autopilot:** freio da janela de 5h | 60% | 80% | 90% |
 
-¹ No autopilot: `model: "opus"`, `effort: "xhigh"` por chamada.
-² Não medido — o benchmark não teve issue prompt-heavy, e a issue marcada Opus/Fable (storage com concorrência) passou igual em Sonnet. A escalada fica como seguro barato para issue de system prompt, agente ou algoritmo core.
-³ No manual, Haiku 4.5 fez um ship aceitável ($0,22 vs $0,33) — só no ship. No autopilot, nunca Haiku (o auto mode de permissões não suporta Haiku).
-⁴ Fable achou as mesmas 5/5 vulnerabilidades a 7× o custo.
-⁵ `sonnet` → `opus` → `fable`, só na 3ª tentativa do loop de correção (`/execute` 2.4). Não medido: troca uma parada humana por uma tentativa mais forte, e só custa quando a issue já falhou duas vezes.
+Escalada: `sonnet` → `opus` → `fable`, só na 3ª tentativa do loop de correção (`/execute` 2.4). A escalada por hint e por falha não foram medidas: são seguro barato, não resultado.
 
-#### Como escolher o perfil
+Perfil (`econ | balanced | max`) não é o effort do Claude Code. Ele define o modelo/effort de cada etapa, se issue com hint escala, e os freios de consumo do autopilot. No autopilot vem de `--profile` ou da tela T0; no manual, a linha **Modelo:** do handoff segue o `balanced`.
 
-Perfil (`econ | balanced | max`) **não** é o effort do Claude Code (low…max). Ele define três coisas: o modelo/effort de cada etapa (tabela acima), se issue com `Model hint: Opus/Fable` escala, e os freios de consumo do autopilot.
+Não use Haiku em etapa que decide ou escreve código (na medição com o 4.5 ele marcou `Done when` como cumprido sem código existir), nem Opus em xhigh como padrão (2–3× o custo sem ganho consistente).
 
-- **econ** — mesmo modelo do balanced (Sonnet · high): o benchmark não achou modelo mais barato que preste (o Haiku fabricou progresso). A economia vem de **não escalar** issue difícil, **pausar em 60%** da janela de 5h (sobra folga para outros trabalhos) e parar em 12 etapas por run (~1 sprint). Use com janela apertada.
-- **balanced** (padrão) — qualidade de topo pelo menor custo medido; escala para Opus só nas raras issues marcadas. Use no dia a dia.
-- **max** — gasta onde o benchmark mediu ganho, que é pequeno: Fable no break (+3 pontos a 2,7× o custo) e Opus xhigh no init (95 vs 89 a ~5×); ~+$7 por projeto. Use quando a qualidade do planejamento vale o custo.
+**Model Routing dentro do `/execute`:** issue com `Model hint: Opus/Fable` é despachada com o `model` da linha correspondente; as demais saem com `model: "sonnet"`. Toda chamada leva `model` e `effort`; o valor por chamada vence o frontmatter do agente registrado.
 
-Projeto de 3 sprints ponta a ponta: econ ~$33 (1 janela, em 2 blocos por pausar em 60%) · balanced ~$33–36 (~1 janela) · max ~$40–43 (~1,2 janela). O execute de um sprint custa ~20% da janela em qualquer perfil. No autopilot o perfil vem de `--profile` ou da tela T0; no manual, a linha **Modelo:** segue o balanced — para max, troque o modelo antes do `/break`.
-
-**Velocidade em vez de custo:** Opus · medium no `/break` e no `/execute` (mesma qualidade no execute, ~35% mais rápido no break, ~2× o preço por token). Não use no `/spec`.
-
-**Nunca:** Haiku em discover, init, spec, break, plan ou execute. Opus em xhigh como padrão — se o seu `modelSettings` deixa Opus em xhigh, rode `/effort medium` ou `high` ao trocar para ele.
-
-#### Consumo medido (perfil balanced, projeto do benchmark)
-
-| Etapa | custo em preço de API | ≈ janela de 5h* |
-|---|---|---|
-| discover · init | $0,2 · $0,4 | ~1% |
-| spec | $0,9 | ~3% |
-| break | $3,2 | ~10% |
-| plan (sprint de 10 issues) | ~$1,5–2,6 | ~5–8% |
-| execute (sprint de 10 issues) | ~$6,5 | ~20% |
-| verify · secure · ship | $0,3–0,5 cada | ~1–1,5% cada |
-| **projeto de 3 sprints, ponta a ponta** | **~$33–36** | **~100–110% (uma janela inteira)** |
-
-\* No plano usado no benchmark, 1% da janela de 5h ≈ $0,33 em preço de API. Outro plano tem outra relação — o freio de janela do autopilot (`references/autopilot/hooks.md`) mostra o seu. Perfil max (Fable no break, Opus xhigh no init): +~$7 por projeto.
-
-**Onde a recomendação aparece:**
-- **Modo manual:** na linha `**Modelo:**` do Bloco de Handoff — antes do `/clear`, para a próxima sessão já abrir certo. Formato: `**Modelo:** Sonnet · effort high (\`/model sonnet\`)`. No Passo 0 do `/execute`, também, para a sessão que já está rodando.
-- **Autopilot:** o condutor roteia sozinho por esta tabela (coluna do perfil do run).
-
-**Model Routing automático (dentro do `/execute`):** o Agent tool aceita override de `model` por chamada. Issue com `Model hint: Opus/Fable` é despachada com o `model` da linha correspondente da tabela (balanced `opus`, max `fable`, econ `sonnet`); as demais saem com `model: "sonnet"` explícito — nenhuma herda o modelo da sessão. Toda chamada leva também `effort` (regra **Despacho explícito**). **O valor por chamada vence o frontmatter do agente registrado.** O usuário não precisa trocar de modelo no meio do sprint.
-
-Regras:
-- **Recomende, não force.** Uma linha no handoff. Se o usuário já escolheu um modelo ou pediu para pular, não repita.
-- Cite a ressalva por issue **só se** existir issue com `Model hint` ≠ padrão.
-- Nomes de modelo mudam — ancore no perfil (econ/balanced/max) e remeça com `evals/model-bench/` quando sair modelo novo.
-- Trigger explícito: se o usuário perguntar "qual modelo rodar?", responda pela tabela para o modo atual/próximo, com o effort.
+**Onde a recomendação aparece:** no manual, na linha `**Modelo:**` do Bloco de Handoff (formato: `**Modelo:** Sonnet · effort high (\`/model sonnet\`)`). No autopilot, o condutor roteia pela tabela. É recomendação: uma linha, sem repetir se o usuário já escolheu. Se ele perguntar "qual modelo rodar?", responda pela tabela para o modo atual, com o effort.
 
 ### Next Command — todo modo termina com o comando completo
 
-**Regra dura:** nenhum modo termina sem emitir o **Bloco de Handoff**. Se o usuário precisou perguntar "qual o comando agora?", o modo anterior falhou. O bloco é a **última coisa** da resposta — depois dele não vem mais nada.
+Todo modo termina emitindo o **Bloco de Handoff**, como última coisa da resposta. Se o usuário precisou perguntar "qual o comando agora?", o modo anterior falhou.
 
 Formato (fixo):
 
@@ -390,9 +346,11 @@ Formato (fixo):
 **Depois:** `/verify` → `/secure` → `/ship`.
 ````
 
+**Sensor antes de emitir.** Depois de gravar `Next command` no `STATE.md`, rode `python3 <skill-dir>/scripts/pm.py next`. Exit 0 imprime o comando validado (sem placeholder, paths existem, alvo presente) — é esse texto que vai no bloco. Exit 1 diz o que está errado em uma linha: corrija o `STATE.md` e rode de novo. `pm.py status` lista sprints, issues, UAT e SECURITY do disco quando você precisar decidir qual é o próximo passo. Sem `python3`, confira à mão pelas regras abaixo.
+
 Regras do bloco:
 
-1. **Caminho real, resolvido do disco.** Nunca emita placeholder — `[slug]`, `NNN`, `[caminho-da-issue]`, `...` no comando final é bug. Use o path exato como o artefato foi gravado, com o diretório real (`docs/sprints/…` se caiu lá, não `sprints/…`). Em dúvida, liste o diretório (`ls`/Glob) **antes** de emitir.
+1. **Caminho real, resolvido do disco**, como o artefato foi gravado (`docs/sprints/…` se caiu lá). Placeholder (`[slug]`, `NNN`, `...`) no comando final é bug — o `pm.py next` reprova.
 2. **O comando vai sozinho num bloco de código**, uma linha, pronto pra copiar. Sem prosa dentro do bloco, sem `$`, sem comentário.
 3. **Um comando primário.** Se existe alternativa legítima (ex.: pular `/verify` porque não é user-facing), liste no máximo **2** extras abaixo, rotuladas, cada uma com o comando completo — nunca uma descrição do comando.
 4. **Emita sempre, inclusive quando o modo bloqueou.** Milestone gate reprovou, threats abertas, blocker ativo → o comando do bloco é o de **recuperação** (ex.: `/project-maker execute` nas issues de fix), não o do próximo estágio.
@@ -400,8 +358,8 @@ Regras do bloco:
 6. **Modelo entra no mesmo bloco.** A recomendação do Model Advisor é a linha `**Modelo:**` — não é uma seção separada nem um parágrafo antes.
 7. **Máx. 4 linhas de prosa** (Modelo, Ressalva, Depois, e no máximo uma nota). Bloco é operacional, não relatório. Ressalva só existe se houver `Model hint` fora do padrão.
 8. **Trigger explícito:** se o usuário perguntar "qual o comando?" / "e agora?" a qualquer momento, responda com o Bloco de Handoff do estado atual — leia STATE.md se precisar resolver o path.
-9. **O comando tem que ser executável agora, no disco como ele está.** Antes de emitir, verifique o **pré-requisito do modo seguinte**: se ele consome um artefato (`/break` consome spec ou backlog; `/execute` consome sprint/issue; `/verify` e `/secure` consomem sprint; `/ship` consome sprint fechado), esse artefato tem que existir **neste momento**. Se não existe, o comando primário é o que **cria** o artefato, não o que o consome — `/project-maker spec feature "[nome]"` em vez de `/break` quando não há spec nem backlog. Emitir o consumidor de um artefato inexistente trava a sessão seguinte e é bug do modo que emitiu.
-10. **Modo que aceita alvo sai com o alvo preenchido.** `/break`, `/plan`, `/execute`, `/verify`, `/secure`, `/ship` recebem path/nome. Emitir esses comandos "pelados" (sem argumento) só é aceitável quando o projeto tem exatamente **um** candidato possível no disco. Em projeto multi-spec/multi-sprint, comando pelado é o mesmo bug da regra 1 em outra forma — resolva o alvo (`ls`/Glob) antes de emitir.
+9. **O comando tem que ser executável agora.** O artefato que o modo seguinte consome (`/break`: spec ou backlog; `/execute`: sprint/issue; `/verify`, `/secure`, `/ship`: sprint) tem que existir neste momento. Se não existe, o comando primário é o que **cria** o artefato — `/project-maker spec feature "[nome]"` em vez de `/break` sem spec nem backlog.
+10. **Modo que aceita alvo sai com o alvo preenchido.** Comando sem argumento só quando o projeto tem exatamente um candidato no disco.
 11. **Com `--autopilot`, o bloco não vai para a tela.** O comando continua sendo resolvido com as mesmas regras e gravado no `STATE.md`, mas a resposta final do agente de etapa é o `PM_STAGE_RESULT` (regra **Stage Contract**) — o condutor lê o `next` dele.
 
 ### Stage Contract (`--autopilot`)
@@ -466,7 +424,8 @@ Todo critério de `Done when` precisa de um **teste automático que o prova**. S
 
 - O campo `Tests` da issue lista os sensores. Sensor faltante = `MISSING — criar primeiro`.
 - O campo `Gate` (sensor 0/1) roda esses testes. Gate sem teste real por trás = gate teatral.
-- Automation-first: se o agente **pode** verificar via CLI/API, **deve** — checkpoint humano confirma *depois* da automação, nunca a substitui.
+- **Red proof:** teste criado na issue tem que ser visto falhando antes da implementação; o implementer devolve o comando e a linha de falha. Teste que nunca falhou não prova nada — pode passar com a função vazia.
+- Automation-first: se o agente **pode** verificar via CLI/API, **deve** — checkpoint humano confirma *depois* da automação, nunca a substitui. Vale para o `/verify`: o que um navegador automatizado consegue conferir não vira pergunta ao usuário.
 
 ### Parallel Write Safety (waves)
 
@@ -492,6 +451,7 @@ Detecte o modo pelo argumento recebido (`$ARGUMENTS`). Se não houver argumento,
 | `/break` | `references/modes/break.md` | `references/issue-template.md`, `references/sprint-template.md` |
 | `/plan` | `references/modes/plan.md` | — |
 | `/execute` | `references/modes/execute.md` | `references/agents/` (no fallback sem agentes registrados) |
+| pergunta sobre modelo, custo ou perfil | — | `references/model-advisor.md` |
 | `/verify` | `references/modes/verify.md` | `references/uat-template.md` |
 | `/secure` | `references/modes/secure.md` | `references/security-template.md` |
 | `/ship` | `references/modes/ship.md` | `references/pr-body-template.md` |
@@ -508,25 +468,19 @@ Detecte o modo pelo argumento recebido (`$ARGUMENTS`). Se não houver argumento,
 Modos (passos completos, carregados on-demand):
 - `references/modes/` — um arquivo por modo: discover, init, spec, break, plan, execute, verify, secure, ship, build, pause, resume, autopilot
 
+Sensores e notas:
+- `scripts/pm.py` — sensores determinísticos: `next` (valida o Next command), `status`, `coverage` (REQ → issue), `waves` (colisão de arquivo)
+- `references/model-advisor.md` — medições do benchmark, custo por etapa, escolha de perfil e limites do que foi medido
+- `references/harness-notes.md` — sondas de comportamento do harness por versão e lições de runs reais
+
 Autopilot:
 - `references/autopilot/stage-contract.md` — contrato dos agentes de etapa (`--autopilot`) e o bloco `PM_STAGE_RESULT`
 - `references/autopilot/ledger-template.md` — formato do `.pm-autopilot/ledger.md` do condutor
 - `references/autopilot/hooks.md` — hooks opt-in (guard de push/PR) e setup de permissões para runs longos
-- `scripts/pm-guard.sh` — hook PreToolUse que bloqueia push/PR/destrutivos em sub-agentes durante um run
+- `scripts/pm-guard.sh` — hook PreToolUse que bloqueia push/PR/deploy/destrutivos em sub-agentes durante um run
+- `scripts/pm-pre-push.sh` — hook git `pre-push`: durante um run, só o push do condutor passa (pega o que o guard não vê)
 
-Templates de artefatos:
-- `references/brief-template.md` — formato do brief.md (leia no /discover ao gerar)
-- `references/spec-template.md` — formato do Spec.md (leia no /spec ao gerar)
-- `references/context-template.md` — formato do context.md (leia no Discuss phase do /spec)
-- `references/sprint-template.md` — formato dos sprints (leia no /break ao gerar)
-- `references/issue-template.md` — formato de issues (leia no /break, com Done when / Tests / Gate / Summary)
-- `references/uat-template.md` — formato do UAT resumível (leia no /verify e no /execute Passo 4.5)
-- `references/security-template.md` — formato do SECURITY (leia no /secure ao gerar)
-- `references/pr-body-template.md` — formato do corpo do PR (leia no /ship ao montar o PR)
-- `references/state-template.md` — formato do STATE.md (leia no /init ao gerar)
-- `references/decisions-template.md` — formato do DECISIONS.md (leia no /init ao gerar)
-- `references/knowledge-template.md` — formato do KNOWLEDGE.md (leia no /init ao gerar)
-- `references/concerns-template.md` — formato do steering/CONCERNS.md (leia no /init ao gerar)
+Templates de artefatos: `references/*-template.md` (brief, spec, context, sprint, issue, uat, security, pr-body, state, decisions, knowledge, concerns). A tabela de modos acima diz qual modo lê qual.
 
 Agentes:
 - `references/agents/` — agentes especializados com frontmatter Claude Code; o /init Passo 4 os instala em `.claude/agents/` do projeto (subagent_type nativo); fallback: ler como prompt no /execute
@@ -535,23 +489,4 @@ Agentes:
 
 Evals:
 - `evals/scenarios.md` — cenários de teste do próprio skill (triggering, handoff, auto-sizing)
-
-**Artefatos gerados no projeto** (paths conforme regra **Localização canônica**):
-- `brief.md` — gerado no /discover
-- `steering/product.md`, `steering/structure.md`, `steering/tech.md` — gerados no /init (sempre)
-- `steering/architecture.md`, `conventions.md`, `testing.md`, `integrations.md` — gerados no /init (Large/Complex)
-- `steering/CONCERNS.md` — gerado no /init, atualizado conforme tech debt surge
-- `Constitution.md` — gerado no /init ou /spec new
-- `STATE.md` — gerado no /init, lido no início e atualizado no final de /execute, /build, /pause
-- `DECISIONS.md` — gerado no /init, append-only ao tomar decisões arquiteturais
-- `KNOWLEDGE.md` — gerado no /init, append-only ao descobrir patterns/gotchas reusáveis
-- `Spec.md` — gerado no /spec (com EARS e rastreabilidade REQ-N)
-- `context.md` — gerado no /spec quando Discuss phase é disparado
-- `docs/research.md` — gerado no /break; inclui `## Package Legitimacy Audit` quando a spec exige instalar pacotes
-- `docs/data-model.md` — gerado no /break
-- `docs/contracts/` — gerado no /break
-- `docs/sprints/` — gerado no /break (com `## Waves`), atualizado no /execute (reassess + milestone gate)
-- `docs/issues/` — gerado no /break, enriquecido no /plan, fechado no /execute
-- `docs/sprints/SPRINT-NNN-uat.md` — gerado no /verify (ou /execute Passo 4.5); resumível, com cold-start smoke e gaps YAML
-- `docs/sprints/SPRINT-NNN-SECURITY.md` — gerado no /secure; threat model + veredito que o /ship lê
-- `PRD.md` — gerado no /break, atualizado no /execute
+- `scripts/test-pm.sh`, `scripts/test-pm-guard.sh` — suítes dos sensores e do guard (rodam no CI)

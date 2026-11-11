@@ -1,0 +1,13 @@
+{
+  "name": "project-maker",
+  "owner": {
+    "name": "Renato de Paula Cardoso"
+  },
+  "plugins": [
+    {
+      "name": "project-maker",
+      "source": "./",
+      "description": "Workflow Spec-Driven Development para Claude Code."
+    }
+  ]
+}

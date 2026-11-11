@@ -6,7 +6,7 @@
 
 `discover → init → spec → break → plan → execute → verify → secure → ship`
 
-MIT License · v3.2.1 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
+MIT License · v3.4.0 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
 
 [English](#english) · [Português](#português)
 
@@ -87,6 +87,8 @@ Complexity decides depth, not the other way around. The skill sizes itself autom
 
 ### Which model per stage (measured)
 
+> **Read this first.** The numbers below compare models *inside* the skill, on one small greenfield fixture, mostly one run per cell. No run has yet measured the same input *without* the skill; the `baseline` command in `evals/model-bench/` exists for that and has not been run. See "Lacunas do método" in `evals/model-bench/README.md`.
+
 Every mode was run for real on a frozen fixture across Fable 5.1, Opus 5.5 (xhigh and medium), Sonnet 5 and Haiku 4.5. Quality was scored with blind judges, hidden acceptance tests, 5 planted vulnerabilities and 2 planted bugs. The method and harness are in `evals/model-bench/`; the full report is on the [wiki](https://github.com/renatodpaula/project-maker/wiki/Benchmark-Report-2026-09).
 
 - **Sonnet 5 · high was 1st or 2nd on every stage**, at the lowest cost among the models that got it right. It is the default everywhere.
@@ -114,11 +116,11 @@ Rough cost per stage (balanced, API prices): break ~$3, execute of a 10-issue sp
 
 ### Harness Engineering features
 
-- **Fresh-context sub-agents.** The orchestrator stays lean (under 40k tokens). Heavy work runs in isolated agents that start clean, which defeats context rot.
+- **Fresh-context sub-agents.** The orchestrator stays lean. Heavy work runs in isolated agents that start clean, which defeats context rot.
 - **Dispatch and wait.** Parallelism comes from several Agent calls in one message. Sub-agents run in the background and report by notification, so no mode closes while a child is still pending. Every call carries an explicit `model` and `effort`, so nothing inherits the session's model.
 - **Escalation on failure.** The third attempt at an issue runs one model tier up (`sonnet` → `opus` → `fable`) before a human is asked.
 - **Validator loop.**
-  - Every issue is checked by an independent validator: threshold 80, 0/1 gate check, stub and fabrication detection.
+  - Every issue is checked by an independent validator that **runs the gate itself** and compares `git status` against the files the implementer declared. Pass needs every criterion met (no score to trade off): gate exit 0, no undeclared file, every `Done when` evidenced, tests that prove something (red proof), no stub.
   - Max 3 attempts, then it stops. It never fabricates a pass.
 - **Wave-based parallelism.**
   - Independent issues are grouped into dependency waves and run in parallel.
@@ -167,12 +169,13 @@ Clone straight into your Claude Code skills directory:
 
 ```bash
 git clone https://github.com/renatodpaula/project-maker ~/.claude/skills/project-maker
-bash ~/.claude/skills/project-maker/scripts/install.sh   # installs the autopilot stage agents in ~/.claude/agents/
 ```
 
-Restart Claude Code, then use `/project-maker` in any project. To update later, run `git -C ~/.claude/skills/project-maker pull` and then `install.sh` again.
+Restart Claude Code, then use `/project-maker` in any project. To update later, run `git -C ~/.claude/skills/project-maker pull`.
 
-`install.sh` is optional. The conductor passes `model` and `effort` on every call, so without the stage agents the autopilot runs the same on the generic agent. Claude Code only loads agents when a session starts, so restart after installing.
+Since v3.4 the repo carries a plugin manifest (`.claude-plugin/plugin.json`), so the same folder loads as the plugin `project-maker@skills-dir` (check with `claude plugin list`). That registers the agents in every project as `project-maker:validator`, `project-maker:component-writer`, … and turns on the autopilot guard hook, with no copy step and no per-project install. The skill name stays `/project-maker`. Install it one way only: either this clone or a marketplace install, not both.
+
+`scripts/install.sh` (stage agents in `~/.claude/agents/`) is only needed on Claude Code versions that don't load a skills-dir plugin. `scripts/pm.py` needs `python3`; the guard needs `jq`.
 
 ### Usage
 
@@ -193,12 +196,28 @@ references/modes/           one playbook per mode (loaded on demand)
 references/autopilot/       stage contract, ledger template, hooks (guard + usage brake)
 references/agents/          writers, validator, stage agents (Claude Code frontmatter)
 references/*-template.md    artifact templates
-scripts/                    install.sh (stage agents) · pm-guard.sh + its test suite
+references/model-advisor.md benchmark numbers, cost per stage, limits of what was measured
+references/harness-notes.md harness probes per Claude Code version, lessons from real runs
+scripts/pm.py               deterministic sensors: next · status · coverage · waves
+scripts/                    pm-guard.sh + pm-pre-push.sh (two-layer guard) · lint-skill.sh · test suites
+.claude-plugin/ · hooks/    plugin manifest, marketplace entry, guard hook registration
 evals/scenarios.md          skill self-test scenarios
-evals/model-bench/          model benchmark harness, hidden tests, results
+evals/model-bench/          model benchmark harness (with a no-skill baseline), hidden tests, results
 ```
 
 ### What's new
+
+- **v3.4** (checked on Claude Code 2.1.322)
+  - **The validator stops trusting the implementer.** It runs the gate itself and checks `git status` against the declared files. The 0–100 score is gone: pass needs every criterion met. New `inconclusive` verdict when a sibling issue's half-written file breaks the gate.
+  - **Red proof.** A test created in an issue must be seen failing before the implementation.
+  - **`scripts/pm.py`**, deterministic sensors instead of prose rules: `next` validates the handoff command, `coverage` finds requirements with no issue, `waves` finds same-wave file collisions, `status` reads the project state from disk.
+  - **Two-layer guard.** A git `pre-push` hook catches pushes from any path (scripts, `python -c`, absolute binary); the `PreToolUse` guard now also catches `env`/`VAR=`/`then`/`xargs`/absolute-path forms, tree-wide `checkout`/`restore`, and common deploy CLIs. 77 test cases.
+  - **Zombie agents.** A `failed` notification no longer triggers an immediate redispatch: the conductor reads the disk first, has a wait ceiling, and stops abandoned children.
+  - **Plugin manifest.** Agents and the guard hook register themselves; `/init` no longer has to copy agents.
+  - **Not web-only anymore.** Prototype issues only when the spec has a UI; a generic implementer for CLI/library/pipeline work; "Superfícies" in the spec template; vertical slice first.
+  - **One file per feature spec** (`docs/specs/FEAT-NNN-slug.md`), explicit spec approval before `/break`, EARS with the unwanted-behaviour pattern, a `Requisitos` section the template was missing.
+  - **`SKILL.md` under 500 lines.** Benchmark narrative and harness history moved to `references/`. Benchmark limits stated up front, and a no-skill `baseline` command added (not yet run).
+  - **CI** runs the sensor, guard and lint suites.
 
 - **v3.3** (checked on Claude Code 2.1.322)
   - **Dispatch and wait** replaces foreground dispatch: `run_in_background` is not in every Agent schema anymore.
@@ -308,6 +327,8 @@ A complexidade decide a profundidade, não o contrário. A skill se dimensiona s
 
 ### Qual modelo em cada etapa (medido)
 
+> **Leia antes.** Os números abaixo comparam modelos *dentro* do skill, num único fixture pequeno e greenfield, quase sempre com uma run por célula. Nenhuma rodada mediu ainda o mesmo insumo *sem* o skill; o comando `baseline` de `evals/model-bench/` existe para isso e não foi rodado. Veja "Lacunas do método" em `evals/model-bench/README.md`.
+
 Cada modo foi rodado de verdade, sobre um insumo congelado, com Fable 5.1, Opus 5.5 (xhigh e medium), Sonnet 5 e Haiku 4.5. A qualidade foi medida com juízes cegos, testes de aceitação ocultos, 5 vulnerabilidades plantadas e 2 bugs plantados. Método e harness em `evals/model-bench/`; relatório completo na [wiki](https://github.com/renatodpaula/project-maker/wiki/Benchmark-Report-2026-09).
 
 - **Sonnet 5 · high ficou em 1º ou 2º em todas as etapas**, pelo menor custo entre os modelos que acertaram. É o padrão em tudo.
@@ -335,11 +356,11 @@ Custo aproximado por etapa (balanced, preço de API): break ~$3; execute de um s
 
 ### Recursos de Harness Engineering
 
-- **Sub-agentes de contexto limpo.** O orquestrador fica enxuto (menos de 40k tokens). O trabalho pesado roda em agentes isolados que começam do zero, o que derrota o context rot.
+- **Sub-agentes de contexto limpo.** O orquestrador fica enxuto. O trabalho pesado roda em agentes isolados que começam do zero, o que derrota o context rot.
 - **Despacho e espera.** O paralelismo vem de várias chamadas Agent numa mesma mensagem. Os sub-agentes rodam em background e respondem por notificação, então nenhum modo fecha com filho pendente. Toda chamada leva `model` e `effort` explícitos, e nada herda o modelo da sessão.
 - **Escalada por falha.** A terceira tentativa de uma issue roda um tier de modelo acima (`sonnet` → `opus` → `fable`) antes de chamar o humano.
 - **Loop de validação.**
-  - Toda issue é checada por um validator independente: threshold 80, gate check 0/1, detecção de stub e fabricação.
+  - Toda issue é checada por um validator independente que **roda o Gate ele mesmo** e compara o `git status` com os arquivos que o implementer declarou. Pass exige todos os critérios (não há nota para compensar): Gate com exit 0, nenhum arquivo não declarado, todo `Done when` com evidência, testes que provam algo (red proof), sem stub.
   - Máximo de 3 tentativas; depois ele para. Nunca fabrica um "pass".
 - **Paralelismo por waves.**
   - Issues independentes são agrupadas em waves de dependência e rodam em paralelo.
@@ -388,12 +409,13 @@ Clone direto na pasta de skills do Claude Code:
 
 ```bash
 git clone https://github.com/renatodpaula/project-maker ~/.claude/skills/project-maker
-bash ~/.claude/skills/project-maker/scripts/install.sh   # instala os agentes de etapa do autopilot em ~/.claude/agents/
 ```
 
-Reinicie o Claude Code e use `/project-maker` em qualquer projeto. Para atualizar depois, rode `git -C ~/.claude/skills/project-maker pull` e depois o `install.sh` de novo.
+Reinicie o Claude Code e use `/project-maker` em qualquer projeto. Para atualizar depois, rode `git -C ~/.claude/skills/project-maker pull`.
 
-O `install.sh` é opcional. O condutor passa `model` e `effort` em toda chamada, então sem os agentes de etapa o autopilot roda igual no agente genérico. O Claude Code só carrega agentes quando a sessão começa: reinicie depois de instalar.
+Desde a v3.4 o repositório traz um manifesto de plugin (`.claude-plugin/plugin.json`), então a mesma pasta carrega como o plugin `project-maker@skills-dir` (confira com `claude plugin list`). Isso registra os agentes em todo projeto como `project-maker:validator`, `project-maker:component-writer`, … e liga o hook do guard do autopilot, sem cópia e sem instalação por projeto. O nome do skill continua `/project-maker`. Instale de um jeito só: este clone ou pelo marketplace, não os dois.
+
+O `scripts/install.sh` (agentes de etapa em `~/.claude/agents/`) só é necessário em versões do Claude Code que não carregam plugin da pasta de skills. O `scripts/pm.py` precisa de `python3`; o guard precisa de `jq`.
 
 ### Uso
 
@@ -414,12 +436,28 @@ references/modes/           um playbook por modo (carregado sob demanda)
 references/autopilot/       contrato de etapa, template do ledger, hooks (guard + freio de uso)
 references/agents/          writers, validator, agentes de etapa (frontmatter Claude Code)
 references/*-template.md    templates dos artefatos
-scripts/                    install.sh (agentes de etapa) · pm-guard.sh + suíte de testes
+references/model-advisor.md números do benchmark, custo por etapa, limites do que foi medido
+references/harness-notes.md sondas do harness por versão do Claude Code, lições de runs reais
+scripts/pm.py               sensores determinísticos: next · status · coverage · waves
+scripts/                    pm-guard.sh + pm-pre-push.sh (guard em duas camadas) · lint-skill.sh · suítes
+.claude-plugin/ · hooks/    manifesto de plugin, entrada de marketplace, registro do hook do guard
 evals/scenarios.md          cenários de auto-teste do skill
-evals/model-bench/          harness do benchmark de modelos, testes ocultos, resultados
+evals/model-bench/          harness do benchmark (com controle sem skill), testes ocultos, resultados
 ```
 
 ### Novidades
+
+- **v3.4** (conferido no Claude Code 2.1.322)
+  - **O validator deixa de confiar no implementer.** Roda o Gate ele mesmo e confere o `git status` contra os arquivos declarados. A nota 0–100 saiu: pass exige todos os critérios. Veredito novo `inconclusive` quando o arquivo pela metade de uma issue irmã quebra o Gate.
+  - **Red proof.** Teste criado numa issue tem que ser visto falhando antes da implementação.
+  - **`scripts/pm.py`**, sensores determinísticos no lugar de regra em prosa: `next` valida o comando do handoff, `coverage` acha requisito sem issue, `waves` acha colisão de arquivo na mesma wave, `status` lê o estado do projeto do disco.
+  - **Guard em duas camadas.** Um hook git `pre-push` pega o push vindo de qualquer caminho (script, `python -c`, binário absoluto); o guard `PreToolUse` passa a pegar as formas com `env`/`VAR=`/`then`/`xargs`/caminho absoluto, `checkout`/`restore` da árvore inteira e os CLIs de deploy comuns. 77 casos de teste.
+  - **Agentes zumbis.** Notificação `failed` não dispara mais redespacho imediato: o condutor lê o disco antes, tem teto de espera e para os filhos abandonados.
+  - **Manifesto de plugin.** Agentes e hook do guard se registram sozinhos; o `/init` não precisa mais copiar agentes.
+  - **Não é mais só web.** Issue de prototype só quando a spec tem interface; implementer genérico para CLI, biblioteca e pipeline; "Superfícies" no template da spec; fatia vertical primeiro.
+  - **Um arquivo por spec de feature** (`docs/specs/FEAT-NNN-slug.md`), aprovação explícita da spec antes do `/break`, EARS com o padrão de comportamento indesejado, e a seção `Requisitos` que faltava no template.
+  - **`SKILL.md` abaixo de 500 linhas.** Narrativa do benchmark e histórico do harness foram para `references/`. Limites do benchmark ditos de saída, e um comando `baseline` sem skill (ainda não rodado).
+  - **CI** roda as suítes dos sensores, do guard e do lint.
 
 - **v3.3** (conferido no Claude Code 2.1.322)
   - **Despacho e espera** substitui o despacho em foreground: `run_in_background` não está mais em todo schema da Agent.

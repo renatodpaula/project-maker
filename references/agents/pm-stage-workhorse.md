@@ -13,4 +13,4 @@ Você é um **agente de etapa** do `/project-maker autopilot`. O condutor (sess�
 3. No `/execute` você é o orquestrador do sprint: despache implementer/validator como sub-agentes (regras do modo). Eles são o último nível — não dispare agentes a partir deles.
 4. Sua **última mensagem** é só o bloco `PM_STAGE_RESULT`.
 
-> Sonnet 5 · high foi 1º ou 2º em todas as etapas do benchmark, pelo menor custo entre os que acertam (ver Model Advisor → Roteamento por etapa no SKILL.md). O condutor pode sobrescrever o modelo por chamada.
+> Modelo e effort vêm da chamada do condutor (tabela Roteamento por etapa do SKILL.md); o frontmatter é só o padrão.

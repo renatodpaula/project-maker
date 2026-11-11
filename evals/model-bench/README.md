@@ -50,12 +50,32 @@ Claude Code 2.1.306, skill v3.2.1, `reduced55.py` (cadeia golden com Sonnet 5 ·
 
 Medium: 30% mais barato e ~60% do tempo do high, mas −8 pontos no spec e −7 no init. A perda no spec foi de acabamento (nome de campo fora do steering, STATE.md desatualizado), não de requisito: o auditor de fidelidade deu 95 aos dois. Limites: uma run por célula; o Sonnet 5 · high variou 6 pontos entre esta rubrica e a de 2026-09, e os juízes divergiram em até 11 pontos no mesmo artefato. Diferenças menores que ~5 pontos são ruído. Decisão: nenhuma mudança de roteamento; um perfil de velocidade só depois de medir execute em medium (etapa cara, com testes ocultos).
 
+## Lacunas do método (leia antes de citar um número)
+
+- **Sem controle até a v3.3.** Nenhuma rodada mediu o mesmo insumo sem o skill. A v3.4 acrescenta o comando `baseline` (abaixo): mesma entrada do `/execute` golden, mesma suíte oculta, sessão comum sem o project-maker. **Ainda não foi rodado.** Até ser, este benchmark compara modelos dentro do skill e não mede o valor do skill.
+- **Efeito teto no `/execute`.** Sonnet e Opus fizeram 88/88: a suíte oculta não separa os dois, e é provável que não separe o controle. Para discriminar, o próximo fixture precisa de issues em que um implementer sozinho erra (concorrência real, migração de dado existente, contrato com serviço externo simulado, brownfield com convenção a respeitar).
+- **Um fixture, greenfield, sem dependências.** Nada aqui cobre brownfield, front-end com framework, banco, nem monorepo.
+- **Uma run por célula** em quase toda a matriz, juízes LLM divergindo até 11 pontos. Diferença menor que ~5 pontos é ruído; ranking entre configs próximas não é confiável.
+- **Juízes da mesma família dos candidatos.** Rubrica e fidelidade foram julgadas por Opus e Fable.
+- **Modelos atuais não medidos:** Fable 5.2 e Haiku 5.5 têm config em `bench.py` (`fable52-high`, `haiku55`), sem rodada.
+
+### Como rodar o controle
+
+```bash
+# src = workdir do snapshot golden logo antes do execute (com Spec, data-model, contracts, sprint e issues enriquecidas)
+python3 bench.py baseline --src "$PM_BENCH_WORK/golden/plan-golden/work" \
+  --arg docs/sprints/SPRINT-001-<slug>.md --configs sonnet55-high --reps 2
+python3 bench.py hidden --src <workdir de um execute com o skill>     # mesma suíte, para comparar
+```
+
+Compare `hidden.pass/total`, `cost_usd` e `wall_s` do controle com os do `/execute` do skill no mesmo modelo. Custo esperado: um execute (~$6–7 em Sonnet) por repetição. Se o controle empatar em acerto por uma fração do custo, o loop implementer → validator não se paga **neste** fixture — o que é um resultado, não um defeito do teste.
+
 ## Achados que mudaram o skill
 
 - **Sonnet 5 · high vira o padrão de todas as etapas** (perfil balanced). O antigo "raciocínio (Opus/Fable) para spec/break" não se sustentou: Fable só venceu no break (+3 pontos a 2,7× o custo) e vai para o perfil max; no spec teve variância alta (92,9 e 84,6) e média abaixo do Sonnet.
 - **Effort > modelo.** Opus 5.5 xhigh custou 2–3× e demorou 3–5× mais que medium sem ganho consistente. Opus 5.5 medium foi o mais rápido, mas perdeu fidelidade no spec (contrariou uma resposta explícita, ampliou escopo).
 - **Haiku fabrica.** No `/plan` marcou `Done when` como cumprido sem código existir. Fica fora de toda etapa que decide ou escreve código.
-- **Bug de harness descoberto:** a ferramenta Agent roda em **background por padrão**. Um `/execute` em sessão headless encerrou o turno "aguardando notificação" e perdeu 5 sub-agents (2 de 10 issues entregues). Virou a regra **Despacho em foreground** (`run_in_background: false`; paralelismo = várias chamadas na mesma mensagem). Depois da correção, o mesmo sprint fechou 7 issues em 8 min.
+- **Bug de harness descoberto:** a ferramenta Agent roda em **background por padrão**. Um `/execute` em sessão headless encerrou o turno "aguardando notificação" e perdeu 5 sub-agents (2 de 10 issues entregues). Na época virou a regra "Despacho em foreground" (`run_in_background: false`); desde a v3.3 a regra é **Despacho e espera** (`SKILL.md`), porque o parâmetro deixou de existir em parte das superfícies. Depois da correção, o mesmo sprint fechou 7 issues em 8 min.
 
 ## Como remedir
 

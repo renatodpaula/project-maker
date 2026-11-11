@@ -19,6 +19,9 @@ UAT conduzido — confirma que o que foi construído **funciona da perspectiva d
 
 **Cold-start smoke test (injeção automática).** Se algum arquivo **de código** tocado pelo sprint casa com `server.*`, `app.*`, `index.*`, `main.*`, `migrations/*`, `seed*`, `db/*`, `docker-compose*`, `Dockerfile*` (ignore assets — `.css`, `.svg`, imagens, fontes) → **prepend** o teste de boot frio (Test 0 do template): matar serviço, limpar estado efêmero, subir do zero, query primária retorna dado vivo. Pega bug que só aparece em estado frio e passa em estado quente.
 
+### Passo 1.5 — Automatize primeiro
+Antes de perguntar qualquer coisa ao usuário, rode você mesmo todo teste que uma máquina consegue conferir: CLI/HTTP direto; para interface web, navegador automatizado (skill `playwright-skill` ou Playwright do projeto, se houver) — navegar, preencher, clicar, ler o resultado, capturar screenshot. Marque `auto-pass` ou registre o gap com a evidência. Sobram para o humano só os testes de **percepção** (aparência, espaçamento, tom de voz, "está agradável?"), de preferência com o screenshot já anexado. Um UAT que pergunta ao usuário o que um script conferia desperdiça a atenção dele e deixa passar o que ele não testou com cuidado.
+
 ### Passo 2 — Conduzir (um por vez)
 - Gere o arquivo de UAT a partir do template, no path do Passo 0. Apresente o teste atual (esperado), aguarde resposta.
 - Processe: pass / issue (com severidade inferida + append no `## Gaps` YAML) / skipped / blocked (pré-requisito — não vira gap).

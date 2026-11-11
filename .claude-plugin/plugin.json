@@ -1,0 +1,27 @@
+{
+  "name": "project-maker",
+  "version": "3.4.0",
+  "description": "Workflow Spec-Driven Development para Claude Code: spec, sprints, execução com implementer e validator separados, UAT, gate de segurança, PR e autopilot.",
+  "author": {
+    "name": "Renato de Paula Cardoso",
+    "url": "https://instagram.com/renatodpaula.ai"
+  },
+  "homepage": "https://github.com/renatodpaula/project-maker",
+  "repository": "https://github.com/renatodpaula/project-maker",
+  "license": "MIT",
+  "skills": [
+    "."
+  ],
+  "agents": [
+    "./references/agents/action-writer.md",
+    "./references/agents/component-writer.md",
+    "./references/agents/hook-writer.md",
+    "./references/agents/integration-writer.md",
+    "./references/agents/model-writer.md",
+    "./references/agents/pm-stage-reasoning.md",
+    "./references/agents/pm-stage-workhorse.md",
+    "./references/agents/route-writer.md",
+    "./references/agents/test-writer.md",
+    "./references/agents/validator.md"
+  ]
+}

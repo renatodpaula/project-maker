@@ -16,7 +16,7 @@
   ├─ Para cada WAVE do sprint (na ordem do DAG; ver ## Waves do sprint.md):
   │    ├─ Issues da wave rodam em PARALELO (1 sub-agent por issue [P]):
   │    │    ├─ spawn implementer (sub-agent isolado)
-  │    │    ├─ spawn validator (sub-agent separado, lê issue + diff + gate result)
+  │    │    ├─ spawn validator (sub-agent separado: roda o Gate e confere a árvore ele mesmo)
   │    │    ├─ se fail e <3 tentativas → re-dispatch implementer com gaps do validator
   │    │    ├─ se pass → fecha issue
   │    │    └─ se 3 fails → marca blocker, pula
@@ -70,6 +70,8 @@ Para cada issue da wave:
 - Inputs validados no servidor, sem secrets expostos?
 - Testes serão escritos junto?
 - **Nyquist:** todo `Done when` da issue tem um sensor em `Tests`? Se algum está `MISSING`, a primeira sub-task do implementer é criar o teste (scaffold) antes de implementar.
+- **Red proof:** o prompt do implementer pede, para cada teste que ele criar, rodar o teste **antes** de implementar e devolver o comando e a linha de falha. Sem isso o validator não tem como saber se o teste prova alguma coisa.
+- **Sem relógio de parede:** `Done when` com limite de tempo ("responde em <2s") é provado por medida relativa ou contagem de operações, não por `sleep`/timeout absoluto — a máquina carregada por outras sessões reprova um teste correto.
 - **Package Legitimacy:** a issue instala pacote? Consulte `## Package Legitimacy Audit` do `docs/research.md`. `[OK]` instala; `[SUS]`/`[ASSUMED]` exigem **checkpoint humano** (mostre o link do registry e confirme antes); `[SLOP]` é **proibido** — pare e reporte, nunca troque o nome em silêncio. Se não há tabela e a issue instala pacote, **bloqueie** e instrua rodar/atualizar o `/break`.
 
 Se algum gate falhar, documente a exceção no Summary da issue antes de prosseguir.
@@ -87,9 +89,12 @@ Escolha o agente conforme o tipo de arquivo da issue:
 | Rotas de API, endpoints | `route-writer` |
 | Integrações externas | `integration-writer` |
 | Arquivos de teste | `test-writer` |
+| Qualquer outro (CLI, biblioteca, script, pipeline, infra, mobile) | `general-purpose`, com a issue e os padrões do projeto como prompt |
+
+Os writers especializados assumem stack web (componentes, server actions, rotas). Fora disso, não force o encaixe: o agente genérico com a issue enriquecida rende mais que um writer com instruções de outro stack.
 
 **Como despachar (em ordem de preferência):**
-1. **Agente registrado** — se o agente existe em `.claude/agents/` do projeto (instalado pelo `/init` Passo 4), dispare via `subagent_type` com o nome da tabela. O frontmatter cuida das tools; `model` e `effort` vão na chamada.
+1. **Agente registrado** — se o agente aparece na lista da ferramenta Agent, com o nome da tabela (instalado em `.claude/agents/` pelo `/init` Passo 4) ou com prefixo de plugin (`project-maker:component-writer`), dispare via `subagent_type`. O frontmatter cuida das tools; `model` e `effort` vão na chamada.
 2. **Fallback** — leia `references/agents/[nome].md` do skill e use o conteúdo como prompt de um sub-agent genérico.
 
 **Model Routing (regras Model Advisor e Despacho explícito):** **toda** chamada de implementer leva `model` e `effort`, nos dois modos de dispatch. Issue com `Model hint: Opus/Fable` → o `model` da linha "issue com Model hint" da tabela Roteamento por etapa (balanced `opus`, max `fable`, econ `sonnet`). Hint `Sonnet` ou ausente → `model: "sonnet"`. `effort: "high"` em todas. Nunca despache sem `model`: no fallback o agente genérico herda o modelo da sessão. O valor por chamada **vence** o frontmatter do agente registrado. Na tentativa 3, aplique a **Escalada por falha** (2.4).
@@ -114,7 +119,8 @@ Com `--autopilot`, não use worktree: o guard nega `git branch -D` a sub-agente 
 
 **O implementer retorna:**
 - Status (Complete | Blocked | Partial)
-- Files changed
+- Files changed — **todos** os arquivos que tocou, inclusive lockfile, config e teste alheio. O validator confere contra `git status`; arquivo fora da lista reprova a issue
+- Red proof — para cada teste criado na issue: o comando e a linha de falha obtida **antes** de implementar
 - Gate check result (exit code + contagens de teste)
 - Spec Deviations (lista ou `none`)
 - Issues encontradas
@@ -125,19 +131,23 @@ Dispare o `validator` como sub-agent independente — mesma ordem de preferênci
 
 **Contexto que o validator recebe:**
 - Issue original (antes da implementação)
-- Diff **só da issue**: `git diff HEAD -- <Files changed>` + `git status --porcelain -- <Files changed>` (arquivo novo ainda não rastreado). Com a árvore dividida por issues paralelas, um `git diff` sem paths mistura o trabalho das outras
-- Gate check result reportado pelo implementer
+- `Files changed` declarados pelo implementer **e** a lista de arquivos das outras issues em andamento na wave (`Arquivos a criar/modificar` de cada uma). O validator roda `git status --porcelain` e o diff ele mesmo: arquivo alterado fora das duas listas é gap
+- Gate check result e Red proof relatados pelo implementer, como alegação a conferir
 - Spec Deviations reportados pelo implementer
 - Spec.md, Constitution.md, steering/, data-model.md, contracts/ relevantes
 
-**Retorna:** Verdict (pass/fail), Score (0-100), Scoring breakdown, Gaps específicos, Deviation review, Recommended action.
+**O validator roda o Gate ele mesmo.** O exit code que vale é o dele, não o relatado. Assim o implementer não consegue declarar um `pass` que não aconteceu.
 
-**Threshold mínimo: 80.** Score < 80 = fail automático. Gate check != 0 = fail automático (mesmo que score seja alto). Detecção de stub/fabricação = fail automático.
+**Retorna:** Verdict (pass | fail | inconclusive), critérios sim/não, Gaps específicos, Deviation review, Recommended action.
+
+**Pass exige todos os critérios em `sim`.** Não há nota: Gate diferente de 0, arquivo não declarado, `Done when` sem evidência, teste que não prova nada ou stub reprovam sozinhos. `inconclusive` (Gate quebrado só por arquivo de issue irmã em andamento) não conta tentativa: redespache o validator quando a irmã fechar.
 
 **2.4 — Loop de correção**
 
 - Se validator `pass` → prossiga para 2.5
 - Se validator `fail` e tentativas < 3 → re-dispatch do **implementer** passando os Gaps do validator como instruções de correção. Volta para 2.3.
+- Se validator `inconclusive` (Gate quebrado só por arquivo de issue irmã) → não conta tentativa; redespache o validator quando a irmã fechar.
+- **Sub-agent que não voltou ou voltou com erro de API:** antes de redespachar, olhe `git status` e `git log` por alguns minutos. Arquivos mudando = ele está vivo, espere. Redespachar por cima de um agente vivo põe dois escrevendo os mesmos arquivos. Ao desistir, pare-o (TaskStop, se disponível) antes do redespacho.
 - **Escalada por falha:** as tentativas 1 e 2 rodam no modelo da issue; a **tentativa 3 sobe um degrau** (`sonnet` → `opus` → `fable`; já em `fable`, repete). Vale em todos os perfis: custa só quando a issue falhou duas vezes e troca uma parada humana por uma tentativa mais forte. Registre no Summary o modelo de cada tentativa. (Não medido no benchmark.)
 - Se tentativas == 3 → registre em `STATE.md` como blocker com o histórico das 3 tentativas, marque issue como `⏸ blocked` no PRD, pule para a próxima issue
 
@@ -146,6 +156,7 @@ Dispare o `validator` como sub-agent independente — mesma ordem de preferênci
 **2.5 — Fechar issue**
 
 - Commit **pelo orquestrador**, só dos arquivos da issue: `git add <Files changed> && git commit -m "feat(SPRINT-NNN/[slug-issue]): [título da issue]"`. Nunca `git add -A` com outras issues da wave em andamento; implementer e validator não commitam.
+- **Fim da wave:** `git status --porcelain` tem que voltar vazio (fora os living docs que o orquestrador vai gravar). Sobra é arquivo que nenhuma issue declarou: descubra de qual issue veio e reabra a validação dela; não commite por conveniência nem apague.
 - Preencha `## Summary` da issue com Status, Files changed, Gate result, Issues encontradas, Spec Deviations (lista completa ou `none`)
 - Se houver deviation que afeta data-model, contracts, ou outras issues do sprint, sinalize e atualize os arquivos afetados nesta mesma sessão
 - Atualize `PRD.md` (se existir): status da issue → `✅ entregue`

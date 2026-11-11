@@ -26,8 +26,9 @@ Monte o corpo a partir dos artefatos seguindo `references/pr-body-template.md`: 
 ### Passo 4 — Criar PR
 ```bash
 # corpo num temp file evita limite de arg do shell
-gh pr create --title "Sprint NNN: [slug]" --body-file "$PR_BODY_FILE" --base main
+gh pr create --title "Sprint NNN: [slug]" --body-file "$PR_BODY_FILE" --base [base]
 ```
+`[base]` = `main`, ou o branch do sprint de que este depende quando o PR dele ainda não foi mergeado (PR empilhado). Se o push for recusado pelo hook `pm-pre-push` (há um run de autopilot ativo ou pausado neste projeto), a mensagem do hook traz o comando com o token do run; use-o só depois de o usuário confirmar o push.
 Adicione `--draft` se o usuário pediu.
 
 ### Passo 5 — Review opcional + tracking

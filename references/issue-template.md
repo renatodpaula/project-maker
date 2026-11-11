@@ -2,7 +2,7 @@
 
 **Tipo**: prototype | functional
 **Spec relacionada**: `Spec.md`
-**Branch**: `issue/[slug-do-titulo]`
+**Branch**: `sprint/[slug-do-sprint]` (issue isolada em `--quick`: `issue/[slug-do-titulo]`)
 **Status**: draft | planned | in-progress | done
 **Model hint**: Sonnet | Opus/Fable
 > Tier de modelo recomendado para implementar (regra Model Advisor). Padrão `Sonnet`.
@@ -105,11 +105,13 @@
 ---
 
 ## Summary
-> Preenchido pelo /execute ao final. Input obrigatório para o validator (PR 2).
+> Preenchido pelo /execute ao final, com o resultado que o validator obteve.
 
 - **Status**: Complete | Blocked | Partial
-- **Files changed**: [lista dos arquivos criados/modificados]
-- **Gate check result**: pass/fail + contagens de teste
+- **Files changed**: [todos os arquivos criados/modificados — conferido contra `git status`]
+- **Red proof**: [por teste novo: comando + linha de falha antes da implementação]
+- **Gate check result**: pass/fail + contagens de teste, **rodado pelo validator**
+- **Modelo por tentativa**: [ex: 1 sonnet · 2 sonnet · 3 opus]
 - **Issues encontradas**: [o que foi difícil, o que quase falhou]
 
 ### Spec Deviations

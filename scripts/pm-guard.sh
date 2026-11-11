@@ -6,8 +6,14 @@
 # session_id da sessão principal). Ledger antigo de outra sessão não trava trabalho manual.
 #
 # Em SUB-AGENTE (input traz agent_id): nega push, PR (gh pr create/merge/ready/edit, gh api em pulls/merges),
-#   qualquer git merge, branch -D, reset --hard, clean -f, stash (push/pop/drop/apply/clear/save), checkout -- .
+#   qualquer git merge, branch -D, reset --hard, clean -f, stash (push/pop/drop/apply/clear/save), checkout/restore
+#   da árvore inteira, update-ref -d, deploy/publish pelos CLIs comuns, e qualquer tentativa de mexer no hook
+#   pre-push ou no token do condutor.
 # Na sessão principal (condutor): nega gh pr merge, push --force/-f, refspec com "+" e push para main/master.
+#
+# Limite conhecido: isto casa TEXTO de comando. Push disparado de dentro de um script (python -c, node -e,
+# Makefile) não aparece aqui. Quem fecha esse caminho é o hook git scripts/pm-pre-push.sh, que roda dentro
+# do próprio git. Instale os dois (references/autopilot/hooks.md).
 #
 # Instalação opt-in: ver references/autopilot/hooks.md. Requer jq; sem jq, nega Bash de sub-agente durante o
 # run (falha fechada) e avisa no stderr.
@@ -42,10 +48,14 @@ deny() {
   exit 0
 }
 
-# Posição de comando: início, depois de ; & | ( $( ou dentro de bash -c / sh -c / eval.
-POS='(^|[;&|(]|\$\(|(bash|sh|zsh) +-c +["'"'"']?|eval +["'"'"']?)[[:space:]]*'
-# git com opções globais antes do subcomando: -C <dir>, -c k=v, --git-dir=..., --work-tree=..., --no-pager
-GIT="${POS}(command +)?git( +(-C +[^ ]+|-c +[^ ]+|--[a-z-]+(=[^ ]+)?))* +"
+# Posição de comando: início, depois de ; & | ( { ` $( , depois de then/do/else/elif/!, ou dentro de
+# bash -c / sh -c / eval. Em seguida, qualquer sequência de prefixos que não mudam o comando executado:
+# sudo/time/exec/nohup/command/env/xargs (com flags) e atribuições VAR=valor.
+START='(^|[;&|({`]|\$\(|(^|[[:space:];])(then|do|else|elif|!)[[:space:]]|(bash|sh|zsh) +-c +["'"'"']?|eval +["'"'"']?)[[:space:]]*'
+PREFIX='((sudo|time|exec|nohup|command|env|xargs)( +-[^ ]+)* +|[A-Za-z_][A-Za-z0-9_]*=[^ ]* +)*'
+POS="${START}${PREFIX}"
+# git por caminho (/usr/bin/git) e com opções globais antes do subcomando: -C <dir>, -c k=v, --git-dir=..., --no-pager
+GIT="${POS}([^ ]*/)?git( +(-C +[^ ]+|-c +[^ ]+|--[a-z-]+(=[^ ]+)?))* +"
 END='([[:space:]]|$|[;&|)"'"'"'])'
 BARE='[[:space:]]*($|[;&|)"'"'"'])'
 
@@ -61,7 +71,15 @@ if [ -n "$agent_id" ]; then
   m "${GIT}clean( +[^;&|]*)? +(-[a-zA-Z]*f|--force)" && deny "autopilot: clean -f proibido no stage contract"
   m "${GIT}stash${BARE}" && deny "autopilot: stash proibido no stage contract (perde trabalho de outra etapa)"
   m "${GIT}stash +([^;&|]*)" && ! m "${GIT}stash +(list|show)${END}" && deny "autopilot: stash proibido no stage contract (perde trabalho de outra etapa)"
-  m "${GIT}checkout +-- +\.${END}" && deny "autopilot: checkout -- . proibido no stage contract"
+  m "${GIT}checkout( +--)? +\.${END}" && deny "autopilot: checkout da árvore inteira proibido no stage contract"
+  m "${GIT}restore( +[^;&|]*)? +\.${END}" && deny "autopilot: restore da árvore inteira proibido no stage contract"
+  m "${GIT}update-ref +(-d|--delete)${END}" && deny "autopilot: update-ref -d proibido no stage contract"
+  m "${GIT}config( +[^;&|]*)? +core\.hooksPath" && deny "autopilot: agente de etapa não troca core.hooksPath"
+  m 'PM_CONDUCTOR_PUSH|hooks/pre-push' && deny "autopilot: token e hook de push são do condutor"
+  m "${POS}(npx +|bunx +|pnpm +dlx +)?(vercel|netlify|wrangler|fly|flyctl|firebase|railway)( +[^;&|]*)? +(deploy|publish|up|--prod)${END}" && deny "autopilot: deploy é decisão humana"
+  m "${POS}(npm|pnpm|yarn|bun)( +run)? +(deploy|release|publish)${END}" && deny "autopilot: deploy/publish é decisão humana"
+  m "${POS}supabase( +[^;&|]*)? +db +push${END}" && deny "autopilot: migration em banco remoto é decisão humana"
+  m "${POS}(terraform|tofu|pulumi) +(apply|up|destroy)${END}" && deny "autopilot: mudança de infra é decisão humana"
 else
   m "${POS}gh( +[^;&|]*)? +pr +merge${END}" && deny "autopilot: merge de PR é sempre humano"
   m "${GIT}push( +[^;&|]*)? +(--force[a-z-]*|-f)${END}" && deny "autopilot: push --force proibido durante o run"
