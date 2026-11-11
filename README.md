@@ -28,8 +28,9 @@ It is built on **Harness Engineering**. The model is just the LLM; the harness i
 /discover      → brief.md                                   guided brainstorming           (Complex)
 /init          → steering/ + Constitution.md                 project memory bank            (Medium+)
                  + STATE.md + DECISIONS.md + KNOWLEDGE.md
-                 + registered agents in .claude/agents/
-/spec          → Spec.md (EARS) + context.md                structured requirements        (Medium+)
+                 + pointer block in CLAUDE.md
+/spec          → Spec.md, or docs/specs/FEAT-NNN-slug.md    structured requirements (EARS),  (Medium+)
+                 for a feature (+ context)                    approved by you before /break
 /break         → docs/research.md + docs/data-model.md      decompose into work            (Large+)
                  + docs/contracts/ + docs/sprints/ (waves)
                  + docs/issues/ (Model hint) + PRD.md
@@ -70,19 +71,20 @@ Complexity decides depth, not the other way around. The skill sizes itself autom
 /project-maker autopilot status | stop | resume
 ```
 
-- **Conductor + stage agents.** Your session dispatches one sub-agent per stage and passes `model` and `effort` on every call (Sonnet · high by default; Fable · high for `/break` in `max`). The `pm-stage-*` agents are optional. The sub-agent runs the mode with `--autopilot` and returns a short status block (`PM_STAGE_RESULT`). The conductor checks that block with one-line sensors (the path exists, the tree is clean, `next` matches `STATE.md`) instead of trusting it.
+- **Conductor + stage agents.** Your session dispatches one sub-agent per stage and passes `model` and `effort` on every call (Sonnet · high by default; Fable · high for `/break` in `max`). The `pm-stage-*` agents are optional. The sub-agent runs the mode with `--autopilot` and returns a short status block (`PM_STAGE_RESULT`). The conductor checks that block with sensors instead of trusting it: `scripts/pm.py next` (the handoff command matches `STATE.md`, has no placeholder, every path exists), `pm.py coverage` and `pm.py waves` after `/break`, a clean tree, and the project's test command run twice after each `/execute`.
 - **It only stops for you, in two batched screens.**
   - **T0, at the start:** how far to go, push/PR policy, UAT policy, and cost profile.
   - **G1, after `/break`:** suspicious packages, required secrets, and high-risk assumptions.
   - **Other stops:** spec questions, stuck issues, UAT tests that need human eyes, push/PR, and new scope.
   - **Merge is never automatic.**
 - **Resumable.** State lives in `.pm-autopilot/ledger.md` (git-excluded), so `/clear`, compaction or a usage-limit cut lose nothing. Run `autopilot resume` afterwards. It re-confirms your push policy in a new session.
-- **Safe.** Only the conductor pushes or opens PRs, and it builds those commands itself. The optional guard hook blocks sub-agents from pushing, opening PRs or running destructive git.
+- **Safe, in two layers.** Only the conductor pushes or opens PRs, and it builds those commands itself. A git `pre-push` hook refuses any push without the conductor's run token, whatever launched it. A `PreToolUse` guard blocks sub-agents from pushing, opening PRs, running destructive git or the common deploy CLIs. Neither is a sandbox: they stop accidents, and a deploy fired from a project script (`make deploy`) is not covered.
+- **It does not redispatch blindly.** A stage reported as `failed` may still be alive. The conductor reads `git log`/`git status` twice before redispatching, has a wait ceiling per stage, and stops abandoned children.
 - **It uses your usage window faster.** Stages run back to back with no idle time between them. A 3-sprint project takes about one full 5-hour window.
 
 **Setup (optional, once)** — details in `references/autopilot/hooks.md`:
 1. **Usage-window brake.** Add the block from *§ Medidor da janela de uso* to your statusline script. It writes `~/.claude/pm-usage.json` (`five_hour`/`seven_day` `used_percentage` + `resets_at`). The conductor then pauses before a stage once you pass the profile threshold (econ 60% · balanced 80% · max 90%), instead of dying mid-stage at the limit.
-2. **Push/PR guard.** Copy `scripts/pm-guard.sh` to `.claude/hooks/` and register it as a `PreToolUse` Bash hook in `.claude/settings.local.json` (needs `jq`). Test it with `bash scripts/test-pm-guard.sh` (41 cases).
+2. **Push/PR guard.** Install the `pre-push` hook per project (`cp scripts/pm-pre-push.sh "$(git rev-parse --git-path hooks)/pre-push"`, if none exists). The `PreToolUse` guard is already registered when the skill loads as a plugin (needs `jq`); otherwise copy `scripts/pm-guard.sh` to `.claude/hooks/` and register it in `.claude/settings.local.json`. Test both with `bash scripts/test-pm-guard.sh` (77 cases).
 3. **Permissions.** Use auto mode, or `acceptEdits` plus an allowlist, so a permission prompt doesn't stall a long run.
 
 ### Which model per stage (measured)
@@ -138,28 +140,30 @@ Rough cost per stage (balanced, API prices): break ~$3, execute of a 10-issue sp
   - Auto-injects a **cold-start smoke test**.
   - Runs a diagnose → fix → re-verify loop when issues are found.
 - **Security gate.** `/secure` reviews the sprint diff, delegating to the `security-review` skill when it's available, and blocks `/ship` while threats are open.
-- **Nyquist rule.** Every acceptance criterion needs an automated sensor. If the test doesn't exist, creating it is the first sub-task.
+- **Nyquist rule and red proof.** Every acceptance criterion needs an automated sensor. If the test doesn't exist, creating it is the first sub-task, and a new test must be seen failing before the implementation.
+- **Deterministic sensors (`scripts/pm.py`).** `next` validates the handoff command, `coverage` finds requirements with no issue, `waves` finds same-wave file collisions, `status` reads the project state from disk. Exit codes, not prose rules.
+- **Works without a UI.** Prototype issues exist only when the spec has screens; CLI, library and pipeline work goes to a generic implementer. The first sprint is a thin end-to-end slice.
 - **Measured Model Advisor.**
   - The model and effort for each stage come from the benchmark above.
   - `/break` tags each issue with a `Model hint`.
   - Inside `/execute`, flagged issues are auto-dispatched to a stronger model through a per-agent override. No session switching.
 - **Handoff Block.**
   - Every mode ends with the **complete next command**, with the real path resolved from disk (never a `[placeholder]`) and the model recommendation in the same box.
-  - It is also written to `STATE.md → Next command`, so it survives `/clear`.
+  - It is also written to `STATE.md → Next command`, so it survives `/clear`, and `pm.py next` checks it before it is shown.
 - **Native registered agents.**
-  - `/init` installs the writers, the validator and the autopilot stage agents into the project's `.claude/agents/`.
-  - Tool restrictions are enforced by the harness (the validator has no Write/Edit), and each agent carries its own model and effort.
+  - Loaded as a plugin, the writers, the validator and the stage agents are registered in every project as `project-maker:<name>`. Without the plugin, `/init` copies them into the project's `.claude/agents/`.
+  - Tool restrictions are enforced by the harness (the validator has no Write/Edit; it keeps Bash to run the gate), and `model` and `effort` go on every call.
 - **Living docs.** `STATE.md` (volatile), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (cross-sprint lessons), `PRD.md` (living product doc).
 
 ### Artifacts it produces
 
 | Where | Files |
 |---|---|
-| Project root | `brief.md` · `Constitution.md` · `Spec.md` · `context.md` · `PRD.md` · `STATE.md` · `DECISIONS.md` · `KNOWLEDGE.md` · `steering/` |
-| `docs/` | `research.md` (with Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (with waves) · `issues/` |
+| Project root | `brief.md` · `Constitution.md` · `Spec.md` · `context.md` · `PRD.md` · `STATE.md` · `DECISIONS.md` · `KNOWLEDGE.md` · `steering/` · a pointer block in `CLAUDE.md` |
+| `docs/` | `specs/FEAT-NNN-slug.md` (one per feature, with its `.context.md`) · `research.md` (with Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (with waves) · `issues/` |
 | Per sprint | `docs/sprints/SPRINT-NNN-uat.md` · `docs/sprints/SPRINT-NNN-SECURITY.md` |
-| `.claude/agents/` | writers, validator, `pm-stage-workhorse`, `pm-stage-reasoning` |
-| Autopilot only | `.pm-autopilot/ledger.md` (git-excluded) · PR body/title drafts |
+| `.claude/agents/` | writers, validator, `pm-stage-workhorse`, `pm-stage-reasoning` (only without the plugin) |
+| Autopilot only | `.pm-autopilot/ledger.md` and `guard.log` (git-excluded) · PR body/title drafts · `.git/hooks/pre-push` |
 
 An existing project convention for artifact locations wins, and it's recorded in `steering/structure.md`.
 
@@ -268,8 +272,9 @@ Project Maker é uma skill do Claude Code que transforma uma ideia em código en
 /discover      → brief.md                                   brainstorming guiado           (Complex)
 /init          → steering/ + Constitution.md                 memory bank do projeto         (Medium+)
                  + STATE.md + DECISIONS.md + KNOWLEDGE.md
-                 + agentes registrados em .claude/agents/
-/spec          → Spec.md (EARS) + context.md                requisitos estruturados        (Medium+)
+                 + bloco de ponteiro no CLAUDE.md
+/spec          → Spec.md, ou docs/specs/FEAT-NNN-slug.md    requisitos estruturados (EARS),  (Medium+)
+                 para uma feature (+ context)                 aprovados por você antes do /break
 /break         → docs/research.md + docs/data-model.md      quebra em trabalho             (Large+)
                  + docs/contracts/ + docs/sprints/ (waves)
                  + docs/issues/ (Model hint) + PRD.md
@@ -310,19 +315,20 @@ A complexidade decide a profundidade, não o contrário. A skill se dimensiona s
 /project-maker autopilot status | stop | resume
 ```
 
-- **Condutor + agentes de etapa.** Sua sessão despacha um sub-agente por etapa e passa `model` e `effort` em toda chamada (Sonnet · high por padrão; Fable · high no `/break` do `max`). Os agentes `pm-stage-*` são opcionais. O sub-agente roda o modo com `--autopilot` e devolve um bloco curto de status (`PM_STAGE_RESULT`). Em vez de confiar nesse bloco, o condutor confere com sensores de 1 linha (o path existe, a árvore está limpa, o `next` bate com o `STATE.md`).
+- **Condutor + agentes de etapa.** Sua sessão despacha um sub-agente por etapa e passa `model` e `effort` em toda chamada (Sonnet · high por padrão; Fable · high no `/break` do `max`). Os agentes `pm-stage-*` são opcionais. O sub-agente roda o modo com `--autopilot` e devolve um bloco curto de status (`PM_STAGE_RESULT`). Em vez de confiar nesse bloco, o condutor confere com sensores: `scripts/pm.py next` (o comando do handoff bate com o `STATE.md`, não tem placeholder e todo path existe), `pm.py coverage` e `pm.py waves` depois do `/break`, árvore limpa, e o comando de teste do projeto rodado duas vezes depois de cada `/execute`.
 - **Só para por você, em duas telas.**
   - **T0, no início:** até onde ir, política de push/PR, política de UAT e perfil de custo.
   - **G1, depois do `/break`:** pacotes suspeitos, segredos exigidos e suposições de alto risco.
   - **Outras paradas:** perguntas do spec, issue travada, testes de UAT que precisam de olho humano, push/PR e escopo novo.
   - **Merge nunca é automático.**
 - **Retomável.** O estado vive em `.pm-autopilot/ledger.md` (fora do git), então `/clear`, compactação ou um corte por limite de uso não perdem nada. Depois, rode `autopilot resume`. Numa sessão nova, ele reconfirma sua política de push.
-- **Seguro.** Só o condutor dá push ou abre PR, e ele mesmo monta esses comandos. O guard opcional impede que sub-agentes deem push, abram PR ou rodem git destrutivo.
+- **Seguro, em duas camadas.** Só o condutor dá push ou abre PR, e ele mesmo monta esses comandos. Um hook git `pre-push` recusa qualquer push sem o token do run do condutor, venha de onde vier. Um guard `PreToolUse` impede que sub-agentes deem push, abram PR, rodem git destrutivo ou os CLIs de deploy mais comuns. Nenhum dos dois é sandbox: eles param acidente, e deploy disparado por script do projeto (`make deploy`) não está coberto.
+- **Não redespacha às cegas.** Uma etapa notificada como `failed` pode continuar viva. O condutor lê `git log`/`git status` duas vezes antes de redespachar, tem teto de espera por etapa e para os filhos abandonados.
 - **Consome a janela de uso mais rápido.** As etapas rodam uma atrás da outra, sem tempo ocioso. Um projeto de 3 sprints leva mais ou menos uma janela de 5h inteira.
 
 **Setup (opcional, uma vez)** — detalhes em `references/autopilot/hooks.md`:
 1. **Freio da janela de uso.** Acrescente ao script da sua statusline o bloco de *§ Medidor da janela de uso*. Ele grava `~/.claude/pm-usage.json` (`used_percentage` e `resets_at` de `five_hour`/`seven_day`). Assim o condutor pausa antes de uma etapa quando você passa do limiar do perfil (econ 60% · balanced 80% · max 90%), em vez de a etapa morrer no meio ao bater o limite.
-2. **Guard de push/PR.** Copie `scripts/pm-guard.sh` para `.claude/hooks/` e registre como hook `PreToolUse` de Bash em `.claude/settings.local.json` (precisa de `jq`). Teste com `bash scripts/test-pm-guard.sh` (41 casos).
+2. **Guard de push/PR.** Instale o hook `pre-push` por projeto (`cp scripts/pm-pre-push.sh "$(git rev-parse --git-path hooks)/pre-push"`, se não houver um). O guard `PreToolUse` já vem registrado quando o skill carrega como plugin (precisa de `jq`); senão, copie `scripts/pm-guard.sh` para `.claude/hooks/` e registre em `.claude/settings.local.json`. Teste os dois com `bash scripts/test-pm-guard.sh` (77 casos).
 3. **Permissões.** Use auto mode, ou `acceptEdits` com allowlist, para um prompt de permissão não travar um run longo.
 
 ### Qual modelo em cada etapa (medido)
@@ -378,28 +384,30 @@ Custo aproximado por etapa (balanced, preço de API): break ~$3; execute de um s
   - Injeta automaticamente um **cold-start smoke test**.
   - Roda um loop diagnose → fix → re-verify quando acha problema.
 - **Gate de segurança.** O `/secure` revisa o diff do sprint, delegando à skill `security-review` quando ela está disponível, e bloqueia o `/ship` enquanto houver ameaça aberta.
-- **Regra Nyquist.** Todo critério de aceitação precisa de um sensor automático. Se o teste não existe, criá-lo é a primeira sub-task.
+- **Regra Nyquist e red proof.** Todo critério de aceitação precisa de um sensor automático. Se o teste não existe, criá-lo é a primeira sub-task, e teste novo tem que ser visto falhando antes da implementação.
+- **Sensores determinísticos (`scripts/pm.py`).** `next` valida o comando do handoff, `coverage` acha requisito sem issue, `waves` acha colisão de arquivo na mesma wave, `status` lê o estado do projeto do disco. Código de saída, não regra em prosa.
+- **Funciona sem interface.** Issue de prototype só existe quando a spec tem telas; CLI, biblioteca e pipeline vão para um implementer genérico. O primeiro sprint é uma fatia fina de ponta a ponta.
 - **Model Advisor medido.**
   - O modelo e o effort de cada etapa vêm do benchmark acima.
   - O `/break` marca cada issue com um `Model hint`.
   - Dentro do `/execute`, as issues marcadas vão para um modelo mais forte via override por agente. Sem trocar de sessão.
 - **Bloco de Handoff.**
   - Todo modo termina com o **comando completo do próximo passo**, com o path real resolvido do disco (nunca um `[placeholder]`) e a recomendação de modelo na mesma caixa.
-  - O comando também vai para `STATE.md → Next command`, então sobrevive ao `/clear`.
+  - O comando também vai para `STATE.md → Next command`, então sobrevive ao `/clear`, e o `pm.py next` confere antes de ele aparecer.
 - **Agentes nativos registrados.**
-  - O `/init` instala os writers, o validator e os agentes de etapa do autopilot em `.claude/agents/` do projeto.
-  - A restrição de ferramentas é garantida pelo harness (o validator não tem Write/Edit), e cada agente carrega seu próprio modelo e effort.
+  - Carregado como plugin, os writers, o validator e os agentes de etapa ficam registrados em todo projeto como `project-maker:<nome>`. Sem o plugin, o `/init` copia para `.claude/agents/` do projeto.
+  - A restrição de ferramentas é garantida pelo harness (o validator não tem Write/Edit; mantém o Bash para rodar o Gate), e `model` e `effort` vão em toda chamada.
 - **Living docs.** `STATE.md` (volátil), `DECISIONS.md` (append-only), `KNOWLEDGE.md` (lições cross-sprint), `PRD.md` (documento vivo do produto).
 
 ### Artefatos que produz
 
 | Onde | Arquivos |
 |---|---|
-| Raiz do projeto | `brief.md` · `Constitution.md` · `Spec.md` · `context.md` · `PRD.md` · `STATE.md` · `DECISIONS.md` · `KNOWLEDGE.md` · `steering/` |
-| `docs/` | `research.md` (com Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (com waves) · `issues/` |
+| Raiz do projeto | `brief.md` · `Constitution.md` · `Spec.md` · `context.md` · `PRD.md` · `STATE.md` · `DECISIONS.md` · `KNOWLEDGE.md` · `steering/` · um bloco de ponteiro no `CLAUDE.md` |
+| `docs/` | `specs/FEAT-NNN-slug.md` (uma por feature, com o `.context.md` dela) · `research.md` (com Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (com waves) · `issues/` |
 | Por sprint | `docs/sprints/SPRINT-NNN-uat.md` · `docs/sprints/SPRINT-NNN-SECURITY.md` |
-| `.claude/agents/` | writers, validator, `pm-stage-workhorse`, `pm-stage-reasoning` |
-| Só no autopilot | `.pm-autopilot/ledger.md` (fora do git) · rascunhos do corpo e do título do PR |
+| `.claude/agents/` | writers, validator, `pm-stage-workhorse`, `pm-stage-reasoning` (só sem o plugin) |
+| Só no autopilot | `.pm-autopilot/ledger.md` e `guard.log` (fora do git) · rascunhos do corpo e do título do PR · `.git/hooks/pre-push` |
 
 Se o projeto já tem uma convenção para a localização dos artefatos, ela vence e fica registrada em `steering/structure.md`.
 
