@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # project-maker — instala os agentes de etapa do autopilot no nível do usuário (~/.claude/agents/).
 # Rode uma vez depois do `git clone` (e de novo após `git pull` que mude references/agents/pm-stage-*.md).
-# Por quê: o Claude Code só carrega agentes quando a sessão começa. Agente copiado no meio da sessão
-# não fica disponível, e o autopilot cairia no agente genérico, que herda o effort da sessão.
+# Opcional: o condutor passa model e effort em toda chamada, então o autopilot roda igual com o
+# agente genérico. Registrados, os agentes de etapa só poupam repetir o papel no prompt.
+# O Claude Code só carrega agentes quando a sessão começa: reinicie depois de instalar.
 set -eu
 SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/agents"

@@ -36,6 +36,20 @@ Rodada de referência: **2026-09-25/26**, Claude Code **2.1.282**.
 
 **Consumo da janela de 5h** (plano da rodada de referência): 1% ≈ $0,33 em preço de API. Um execute de sprint de 10 issues em Sonnet ≈ 20% da janela; um projeto de 3 sprints ponta a ponta (com plan de sprint ~$1,5–2,6 cada) ≈ $33–36, uma janela inteira.
 
+## Rodada reduzida 2026-10: Sonnet 5.5 medium vs high
+
+Claude Code 2.1.306, skill v3.2.1, `reduced55.py` (cadeia golden com Sonnet 5 · high; as duas configs novas partem do mesmo snapshot). Só discover, init, spec e plan, 1 run por célula; juízes cegos: Opus rubrica, Fable rubrica e Opus fidelidade (rubrica escrita nesta rodada, não comparável com a de 2026-09). Sem execute/secure/verify.
+
+| Etapa | Sonnet 5 high | Sonnet 5.5 medium | Sonnet 5.5 high |
+|---|---|---|---|
+| discover | 90,0 · $0,20 · 39s | 93,3 · $0,16 · 23s | **94,0** · $0,16 · 35s |
+| init | 85,0 · $0,54 · 205s | 82,0 · $0,29 · 77s | **89,3** · $0,36 · 92s |
+| spec | 79,7 · $0,58 · 185s | 84,7 · $0,30 · 74s | **93,0** · $0,44 · 125s |
+| plan | 81,7 · $1,62 · 518s | 92,3 · $1,03 · 299s | **93,3** · $1,61 · 526s |
+| média | 84,1 · $2,94 | 88,1 · $1,78 | **92,4** · $2,57 |
+
+Medium: 30% mais barato e ~60% do tempo do high, mas −8 pontos no spec e −7 no init. A perda no spec foi de acabamento (nome de campo fora do steering, STATE.md desatualizado), não de requisito: o auditor de fidelidade deu 95 aos dois. Limites: uma run por célula; o Sonnet 5 · high variou 6 pontos entre esta rubrica e a de 2026-09, e os juízes divergiram em até 11 pontos no mesmo artefato. Diferenças menores que ~5 pontos são ruído. Decisão: nenhuma mudança de roteamento; um perfil de velocidade só depois de medir execute em medium (etapa cara, com testes ocultos).
+
 ## Achados que mudaram o skill
 
 - **Sonnet 5 · high vira o padrão de todas as etapas** (perfil balanced). O antigo "raciocínio (Opus/Fable) para spec/break" não se sustentou: Fable só venceu no break (+3 pontos a 2,7× o custo) e vai para o perfil max; no spec teve variância alta (92,9 e 84,6) e média abaixo do Sonnet.
