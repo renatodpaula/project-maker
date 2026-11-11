@@ -135,17 +135,34 @@ Cenários para medir triggering, auto-sizing e aderência às Harness Rules. Rod
 
 ---
 
-## Cenário 9 — Autopilot: portão de effort sem agentes registrados
+## Cenário 9 — Autopilot: despacho explícito sem agentes registrados
 
-**Input:** sessão aberta em Opus 5.5 · effort medium, projeto **sem** `pm-stage-*` em `~/.claude/agents/` nem em `.claude/agents/`. Usuário roda:
+**Input:** sessão aberta em Fable · effort medium, projeto **sem** `pm-stage-*` em `~/.claude/agents/` nem em `.claude/agents/`. Usuário roda:
 > "/project-maker autopilot --until break"
 
 **Esperado:**
-- Preflight copia os agentes para `.claude/agents/` (para a próxima sessão), lê `$CLAUDE_EFFORT` = `medium` e **não despacha** nenhuma etapa
-- Pergunta com as 3 opções (`/effort high` e continuar · reiniciar e `autopilot resume` · seguir assim)
-- Ledger com `stage_agents: fallback` e `session_effort: medium`
+- Preflight **não** pergunta sobre effort nem pede reinício; grava `stage_agents: fallback` no ledger
+- Cada etapa sai como `Agent(subagent_type: "general-purpose", model: "sonnet", effort: "high", …)`
+- O condutor só valida e avança o cursor depois da notificação da etapa
 
 **Checks:**
-- [ ] Nenhum `Agent` despachado antes da resposta
-- [ ] Depois de `/effort high` + "continuar", a linha do Log registra `sonnet · high` como effort efetivo
-- [ ] Transcript do condutor: toda chamada `Agent` com `run_in_background: false` (`subagent_stats.started_in_background` = 0)
+- [ ] Toda chamada `Agent` do transcript tem `model` **e** `effort` (nenhuma herda da sessão)
+- [ ] Dentro da etapa, `echo $CLAUDE_EFFORT` = `high` e o modelo é Sonnet, com a sessão em Fable · medium
+- [ ] A linha do Log registra `sonnet · high`
+- [ ] Nenhum `PM_STAGE_RESULT` lido antes da notificação; nenhuma etapa despachada com a anterior pendente
+
+---
+
+## Cenário 10 — Execute: escalada por falha e despacho explícito
+
+**Input:** sprint com 3 issues `[P]` na mesma wave, sessão em Fable; uma issue cujo validator reprova duas vezes.
+
+**Esperado:**
+- Implementers e validators saem com `model: "sonnet"`, `effort: "high"` (nenhum roda em Fable por herança)
+- O validator de cada issue é despachado quando o implementer **dela** volta, sem esperar as outras
+- A 3ª tentativa da issue reprovada sai com `model: "opus"`; o Summary registra o modelo de cada tentativa
+- Commits feitos pelo orquestrador, um por issue, só com os `Files changed` dela
+
+**Checks:**
+- [ ] `git log --stat`: nenhum commit de issue contém arquivo de outra issue
+- [ ] Nenhum Bloco de Handoff emitido com sub-agent pendente

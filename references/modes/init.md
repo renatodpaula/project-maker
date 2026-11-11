@@ -70,7 +70,7 @@ Gere `Constitution.md` na raiz com princípios não negociáveis:
 **Passo 3 — Living docs e CONCERNS.md**
 Gere os arquivos vivos de harness a partir dos templates em `references/`:
 
-- `STATE.md` na raiz — de `references/state-template.md`. Preencher `Current Session` com fase atual (`init`), `Next action` ("iniciar /spec"), `Next command` (`/project-maker spec new`) e `Next model` (raciocínio), demais seções vazias.
+- `STATE.md` na raiz — de `references/state-template.md`. Preencher `Current Session` com fase atual (`init`), `Next action` ("iniciar /spec"), `Next command` (`/project-maker spec new`) e `Next model` (Sonnet · effort high), demais seções vazias.
 - `DECISIONS.md` na raiz — de `references/decisions-template.md`. Deixar vazio; append conforme decisões são tomadas.
 - `KNOWLEDGE.md` na raiz — de `references/knowledge-template.md`. Deixar vazio; append conforme patterns/gotchas são descobertos.
 - `steering/CONCERNS.md` — de `references/concerns-template.md`. Deixar vazio; preenchido conforme tech debt e áreas frágeis aparecem.
@@ -85,16 +85,16 @@ mkdir -p .claude/agents && cp [skill-dir]/references/agents/*.md .claude/agents/
 
 Isso registra os writers (component, action, hook, model, route, integration, test), o validator e os dois agentes de etapa do autopilot (`pm-stage-reasoning`, `pm-stage-workhorse`) como **agentes nativos do Claude Code**. Efeitos:
 - O `/execute` pode despachar via `subagent_type` (ex: `component-writer`) em vez de colar o .md como prompt
-- O frontmatter passa a valer de verdade: `tools:` restringe ferramentas por harness (o validator **não tem** Write/Edit — edits diretos ficam bloqueados pelo harness; ele mantém Bash para rodar o Gate, então o shell ainda pode escrever arquivo — para endurecer de verdade, restrinja o Bash do validator a comandos de teste nas permission rules do projeto) e `model:` define o modelo default do agente
+- O frontmatter passa a valer de verdade: `tools:` restringe ferramentas por harness (o validator **não tem** Write/Edit — edits diretos ficam bloqueados pelo harness; ele mantém Bash para rodar o Gate, então o shell ainda pode escrever arquivo — para endurecer de verdade, restrinja o Bash do validator a comandos de teste nas permission rules do projeto) e `model:` define o modelo default do agente (o `/execute` passa `model` e `effort` por chamada de qualquer forma)
 - Se já existir um agente com o mesmo nome em `.claude/agents/`, **não sobrescreva** — avise e pule
 
 Se o usuário recusar ou o projeto não quiser os agentes, tudo continua funcionando no modo fallback (ler o .md e usar como prompt de sub-agent genérico).
 
-**Atenção:** agentes copiados agora só ficam disponíveis na **próxima** sessão do Claude Code (a lista de agentes é carregada no início da sessão). Diga isso no handoff. Os agentes de etapa do autopilot ficam melhor instalados no nível do usuário, uma vez só: `bash <skill-dir>/scripts/install.sh`.
+**Atenção:** agentes copiados agora só ficam disponíveis na **próxima** sessão do Claude Code (a lista de agentes é carregada no início da sessão). Diga isso no handoff. Os agentes de etapa do autopilot são opcionais (sem eles o condutor usa `general-purpose` com o mesmo `model`/`effort`); para instalá-los no nível do usuário, uma vez só: `bash <skill-dir>/scripts/install.sh`.
 
 **Ao final:** emita o **Bloco de Handoff** (regra Next Command) com o comando completo — `spec new` em projeto novo, `spec feature "[nome]"` se o init foi rodado em projeto existente:
 > **▶ Próximo passo** — `/clear` primeiro, depois:
 > ```
 > /project-maker spec new
 > ```
-> **Modelo:** Sonnet · effort high — o mais fiel às respostas na captura de requisitos; Fable 5.1 só no perfil max. Evite Opus em effort medium no spec (perdeu fidelidade no benchmark).
+> **Modelo:** Sonnet · effort high — o mais fiel às respostas na captura de requisitos, em todos os perfis. Evite Opus em effort medium no spec (perdeu fidelidade no benchmark).

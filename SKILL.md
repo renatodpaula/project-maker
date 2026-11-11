@@ -228,9 +228,21 @@ Use sub-agents (Task tool ou equivalente) para manter o contexto do agente orque
 | Issues paralelas `[P]` | Sim (1 sub-agent por issue) | Única forma de paralelismo real |
 | Issues sequenciais | Sim | Mantém artefatos de implementação fora do contexto principal |
 | Planning, criação de tasks, validation reports | **Não** | Precisam do contexto acumulado para coerência |
+| `/plan` de **sprint** (enriquecer N issues) | Sim (1 sub-agent por issue, em paralelo) | As issues são independentes depois da pesquisa externa única; o orquestrador confere colisões no fim |
 | Tarefas em modo `--quick` | Não | Overhead não compensa |
 
-**Despacho em foreground (regra dura).** No Claude Code atual, a ferramenta Agent roda em **background por padrão**. Todo sub-agent do skill (implementer, validator, Explore, diagnose, agente de etapa) é despachado com `run_in_background: false`; paralelismo de wave = **várias chamadas Agent na mesma mensagem**, todas em foreground (rodam juntas e o orquestrador só segue quando todas voltam). Nunca encerre o turno "aguardando notificação": em sessão headless (`claude -p`) e dentro de um agente de etapa, encerrar o turno com sub-agents pendentes pode matá-los — medido no benchmark: um `/execute` terminou com 2 de 10 issues e 5 agentes mortos.
+**Despacho e espera (regra dura).** A ferramenta Agent roda os sub-agents em **background** e entrega o resultado por **notificação** (verificado no 2.1.322 em sessão interativa, dentro de sub-agente e em `claude -p`). O parâmetro `run_in_background` só existe em algumas superfícies (visto no `claude -p`; ausente na sessão interativa e dentro de sub-agente), então a regra vale pelo comportamento, não pelo parâmetro:
+
+1. Paralelismo = **várias chamadas Agent na mesma mensagem**.
+2. Se o schema da sua ferramenta Agent tem `run_in_background`, passe `false`. Se não tem, não invente o parâmetro.
+3. Depois de despachar, **espere a notificação de cada sub-agent** antes de usar o resultado. Nunca relate, suponha nem valide um resultado que ainda não chegou. Conte: N despachados, N recebidos.
+4. **Nenhum fechamento com filho pendente.** O Bloco de Handoff (manual) e o `PM_STAGE_RESULT` (agente de etapa) só saem depois que todos voltaram. Encerrar o turno para aguardar a notificação é o caminho normal; emitir o fechamento do modo antes dela é o bug.
+
+Histórico: no 2.1.282 um `/execute` headless terminou com 2 de 10 issues e 5 agentes mortos. No 2.1.322 a sonda (2 filhos com `sleep`, em `claude -p` e dentro de um sub-agente) recebeu os dois resultados.
+
+**Despacho explícito (regra dura).** Toda chamada Agent do skill leva `model` **e** `effort` da tabela **Roteamento por etapa**, mesmo quando o agente é registrado. Sem `model`, o agente genérico herda o modelo da sessão (sessão em Fable = sprint inteiro em Fable); sem `effort`, herda o effort de quem despachou. Padrão quando a tabela não diz outra coisa: `model: "sonnet"`, `effort: "high"`. Verificado no 2.1.322: o `effort` por chamada vence o do frontmatter (agente com `effort: high` despachado com `low` rodou em `low`); `general-purpose` com `model: "sonnet"` + `effort: "medium"` rodou em Sonnet · medium; filho despachado sem `effort` herdou o do pai.
+
+**Profundidade.** Sub-agente de 1º nível tem a ferramenta Agent; o de 2º nível não tem (verificado no 2.1.322, com filho em Haiku). Cadeia máxima: sessão → sub-agent → sub-agent. No autopilot isso é condutor → agente de etapa → implementer/validator, então implementer, validator e os sub-agents do `/plan` **não delegam**: exploram direto com Grep/Glob/Read.
 
 **Contexto mínimo que cada sub-agent recebe:**
 - A definição específica da issue (Descrição, Cenários, Done when, Tests, Gate, Arquivos a criar/modificar, Padrões)
@@ -249,11 +261,11 @@ Use sub-agents (Task tool ou equivalente) para manter o contexto do agente orque
 
 O orquestrador usa isso para atualizar STATE.md, PRD.md e decidir o próximo passo.
 
-**Agentes registrados vs. prompt-colado:** os agentes de `references/agents/` têm frontmatter Claude Code (`name`, `tools`, `model`). Instalados em `.claude/agents/` do projeto (`/init` Passo 4), viram `subagent_type` nativo — restrição de tools por harness e model default de verdade. Não instalados, o fallback é ler o .md e usar como prompt de sub-agent genérico. Prefira sempre o registrado quando existir.
+**Agentes registrados vs. prompt-colado:** os agentes de `references/agents/` têm frontmatter Claude Code (`name`, `tools`, `model`). Instalados em `.claude/agents/` do projeto (`/init` Passo 4), viram `subagent_type` nativo — restrição de tools por harness de verdade (`model` e `effort` vão na chamada — regra **Despacho explícito**). Não instalados, o fallback é ler o .md e usar como prompt de sub-agent genérico. Prefira sempre o registrado quando existir.
 
-**Workflow tool (opt-in):** se a sessão tem o Workflow tool e o usuário **pediu explicitamente** orquestração multi-agente (ex: "ultracode", "use um workflow"), as waves do `/execute` podem rodar via `pipeline()` (implementer → validator por issue, sem barrier entre issues). Nunca use Workflow sem esse opt-in — o Agent tool comum cobre o caso padrão. **Não use Workflow para o autopilot:** agentes de workflow não têm a ferramenta Agent (verificado no 2.1.282), então um `/execute` dentro deles não conseguiria despachar implementer/validator. O autopilot usa a ferramenta Agent da sessão principal.
+**Workflow tool (opt-in):** se a sessão tem o Workflow tool e o usuário **pediu explicitamente** orquestração multi-agente (ex: "ultracode", "use um workflow"), as waves do `/execute` podem rodar via `pipeline()` (implementer → validator por issue; o `/execute` comum já roda sem barreira entre issues). Nunca use Workflow sem esse opt-in — o Agent tool comum cobre o caso padrão. **Não use Workflow para o autopilot:** agentes de workflow não têm a ferramenta Agent (verificado no 2.1.282; **não reverificado** no 2.1.322 — a sonda exige opt-in de workflow), então um `/execute` dentro deles não conseguiria despachar implementer/validator. O autopilot usa a ferramenta Agent da sessão principal.
 
-**Agentes de etapa (autopilot):** `pm-stage-workhorse` (Sonnet · high) e `pm-stage-reasoning` (Fable · high), em `references/agents/` e instalados pelo `/init`, têm `model` **e** `effort` no frontmatter — a etapa roda no effort certo independente do effort da sessão — **desde que os agentes existam quando a sessão começa** (o Claude Code não carrega agente criado no meio da sessão; instale com `scripts/install.sh`) (verificado: o frontmatter `effort` vale para o sub-agente; `general-purpose` herda o effort da sessão). Profundidade usada: condutor → agente de etapa → implementer/validator (2 níveis; o limite padrão é 3).
+**Agentes de etapa (autopilot):** `pm-stage-workhorse` e `pm-stage-reasoning`, em `references/agents/`, são **opcionais**. O condutor passa `model` e `effort` em toda chamada (regra **Despacho explícito**), então a etapa roda no modelo e effort da tabela com o agente registrado ou com o fallback `general-purpose` — não existe mais portão de effort nem necessidade de reiniciar a sessão. Registrados (`scripts/install.sh` ou `/init`), só poupam repetir o papel no prompt.
 
 ### Gate Check 0/1 (sensor externo)
 
@@ -299,36 +311,38 @@ Cada etapa tem um perfil de trabalho diferente, e rodar o modelo certo muda cust
 
 #### Roteamento por etapa
 
-Células = `modelo · effort`. **balanced** é o padrão do modo manual e do autopilot. No autopilot, `workhorse` = agente `pm-stage-workhorse` (Sonnet · high) e `reasoning` = `pm-stage-reasoning` (Fable · high); "+ model X" = override por chamada. O `effort` vem do frontmatter do agente de etapa, independente do effort da sessão.
+Células = `modelo · effort`. **balanced** é o padrão do modo manual e do autopilot. No autopilot o condutor passa `model` e `effort` da célula em **toda** chamada (regra **Despacho explícito**); `workhorse` (`pm-stage-workhorse`) e `reasoning` (`pm-stage-reasoning`) são só o `subagent_type` preferido quando registrados — sem eles, `general-purpose` com os mesmos `model`/`effort`.
 
 | Etapa | econ | balanced (padrão) | max |
 |---|---|---|---|
-| discover, init | Sonnet · high | Sonnet · high | discover Sonnet · high · init Opus 5.5 · xhigh¹ |
+| discover, init | Sonnet · high | Sonnet · high | discover Sonnet · high · init Opus · xhigh¹ |
 | spec | Sonnet · high | Sonnet · high | Sonnet · high |
-| break | Sonnet · high | Sonnet · high | Fable 5.1 · high (`reasoning`) |
+| break | Sonnet · high | Sonnet · high | Fable · high (`reasoning`) |
 | plan | Sonnet · high | Sonnet · high | Sonnet · high |
 | execute (orquestrador, implementers, validator) | Sonnet · high | Sonnet · high | Sonnet · high |
-| issue com `Model hint: Opus/Fable` | Sonnet (não escala) | Opus 5.5 · high² | Fable 5.1 · high |
+| issue com `Model hint: Opus/Fable` | Sonnet (não escala) | Opus · high² | Fable · high |
+| 3ª tentativa de uma issue (escalada por falha⁵) | um degrau acima | um degrau acima | um degrau acima |
 | verify, secure, ship | Sonnet · high³ | Sonnet · high | Sonnet · high⁴ |
 | **Autopilot:** `max_stages` por run | 12 | 30 | 60 |
 | **Autopilot:** freio da janela de 5h | 60% | 80% | 90% |
 
-¹ No autopilot: `reasoning` + model opus (effort high do frontmatter; xhigh só no manual com `/effort xhigh`).
+¹ No autopilot: `model: "opus"`, `effort: "xhigh"` por chamada.
 ² Não medido — o benchmark não teve issue prompt-heavy, e a issue marcada Opus/Fable (storage com concorrência) passou igual em Sonnet. A escalada fica como seguro barato para issue de system prompt, agente ou algoritmo core.
 ³ No manual, Haiku 4.5 fez um ship aceitável ($0,22 vs $0,33) — só no ship. No autopilot, nunca Haiku (o auto mode de permissões não suporta Haiku).
 ⁴ Fable achou as mesmas 5/5 vulnerabilidades a 7× o custo.
+⁵ `sonnet` → `opus` → `fable`, só na 3ª tentativa do loop de correção (`/execute` 2.4). Não medido: troca uma parada humana por uma tentativa mais forte, e só custa quando a issue já falhou duas vezes.
 
 #### Como escolher o perfil
 
 Perfil (`econ | balanced | max`) **não** é o effort do Claude Code (low…max). Ele define três coisas: o modelo/effort de cada etapa (tabela acima), se issue com `Model hint: Opus/Fable` escala, e os freios de consumo do autopilot.
 
 - **econ** — mesmo modelo do balanced (Sonnet · high): o benchmark não achou modelo mais barato que preste (o Haiku fabricou progresso). A economia vem de **não escalar** issue difícil, **pausar em 60%** da janela de 5h (sobra folga para outros trabalhos) e parar em 12 etapas por run (~1 sprint). Use com janela apertada.
-- **balanced** (padrão) — qualidade de topo pelo menor custo medido; escala para Opus 5.5 só nas raras issues marcadas. Use no dia a dia.
+- **balanced** (padrão) — qualidade de topo pelo menor custo medido; escala para Opus só nas raras issues marcadas. Use no dia a dia.
 - **max** — gasta onde o benchmark mediu ganho, que é pequeno: Fable no break (+3 pontos a 2,7× o custo) e Opus xhigh no init (95 vs 89 a ~5×); ~+$7 por projeto. Use quando a qualidade do planejamento vale o custo.
 
 Projeto de 3 sprints ponta a ponta: econ ~$33 (1 janela, em 2 blocos por pausar em 60%) · balanced ~$33–36 (~1 janela) · max ~$40–43 (~1,2 janela). O execute de um sprint custa ~20% da janela em qualquer perfil. No autopilot o perfil vem de `--profile` ou da tela T0; no manual, a linha **Modelo:** segue o balanced — para max, troque o modelo antes do `/break`.
 
-**Velocidade em vez de custo:** Opus 5.5 · medium no `/break` e no `/execute` (mesma qualidade no execute, ~35% mais rápido no break, ~2× o preço por token). Não use no `/spec`.
+**Velocidade em vez de custo:** Opus · medium no `/break` e no `/execute` (mesma qualidade no execute, ~35% mais rápido no break, ~2× o preço por token). Não use no `/spec`.
 
 **Nunca:** Haiku em discover, init, spec, break, plan ou execute. Opus em xhigh como padrão — se o seu `modelSettings` deixa Opus em xhigh, rode `/effort medium` ou `high` ao trocar para ele.
 
@@ -350,7 +364,7 @@ Projeto de 3 sprints ponta a ponta: econ ~$33 (1 janela, em 2 blocos por pausar 
 - **Modo manual:** na linha `**Modelo:**` do Bloco de Handoff — antes do `/clear`, para a próxima sessão já abrir certo. Formato: `**Modelo:** Sonnet · effort high (\`/model sonnet\`)`. No Passo 0 do `/execute`, também, para a sessão que já está rodando.
 - **Autopilot:** o condutor roteia sozinho por esta tabela (coluna do perfil do run).
 
-**Model Routing automático (dentro do `/execute`):** o Agent tool aceita override de `model` por chamada. Issue com `Model hint: Opus/Fable` é despachada com o `model` da linha correspondente da tabela (balanced `opus`, max `fable`, econ sem override); as demais herdam. **O override por chamada vence o `model:` do frontmatter do agente registrado.** O usuário não precisa trocar de modelo no meio do sprint.
+**Model Routing automático (dentro do `/execute`):** o Agent tool aceita override de `model` por chamada. Issue com `Model hint: Opus/Fable` é despachada com o `model` da linha correspondente da tabela (balanced `opus`, max `fable`, econ `sonnet`); as demais saem com `model: "sonnet"` explícito — nenhuma herda o modelo da sessão. Toda chamada leva também `effort` (regra **Despacho explícito**). **O valor por chamada vence o frontmatter do agente registrado.** O usuário não precisa trocar de modelo no meio do sprint.
 
 Regras:
 - **Recomende, não force.** Uma linha no handoff. Se o usuário já escolheu um modelo ou pediu para pular, não repita.
@@ -406,7 +420,7 @@ Sem a flag, nada disso se aplica — o modo roda como sempre.
 
 Se durante `/execute` o validator reprovar a mesma issue **3 vezes seguidas**, ou o implementer tentar a mesma fix **2 vezes** sem progresso:
 
-1. **Pare o loop imediatamente.** Não tente uma 4ª/3ª vez.
+1. **Pare o loop imediatamente.** Não tente uma 4ª/3ª vez. (A 3ª tentativa do validator já rodou um degrau de modelo acima — regra **Escalada por falha** do `/execute` 2.4.)
 2. Escreva diagnóstico em `STATE.md` → `Blockers` contendo:
    - Issue afetada
    - Padrão detectado (ex: "validator sempre reprova por stub detectado em `service.ts`")
@@ -459,7 +473,8 @@ Todo critério de `Done when` precisa de um **teste automático que o prova**. S
 Quando issues `[P]` rodam em paralelo na mesma wave (ver `/execute`):
 - **Só o orquestrador escreve** em `STATE.md`, `PRD.md`, `DECISIONS.md`, `KNOWLEDGE.md`. Sub-agents **retornam** o que mudou; o orquestrador serializa as escritas. Sub-agent nunca edita living docs direto (evita race read-modify-write).
 - Issues da mesma wave **não podem tocar os mesmos arquivos de código**. Se colidem, vão para waves diferentes ou viram uma issue só.
-- Cada sub-agent commita só os arquivos da sua issue.
+- **Sub-agent não commita** quando divide a árvore com outros: o orquestrador commita cada issue depois do `pass` do validator, com `git add` só dos `Files changed` dela (1 commit por issue). O validator recebe o diff restrito a esses paths.
+- Exceção: implementer em worktree isolada (opt-in, `/execute` 2.2) commita no próprio worktree e o orquestrador traz o commit para o branch do sprint.
 
 ---
 

@@ -3,11 +3,21 @@
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 > **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `plan` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Argumento:** caminho ou nome da issue (ex: `docs/issues/prototype/01-pagina-login.md`), **ou** caminho de um sprint (`docs/sprints/SPRINT-NNN-[slug].md`) — nesse caso, rode os Passos 1-3 para cada issue do sprint que ainda não tem `## Arquivos a criar` preenchido, pulando as já enriquecidas, e faça a pesquisa externa (Passo 2) uma vez para o sprint todo.
+**Argumento:** caminho ou nome da issue (ex: `docs/issues/prototype/01-pagina-login.md`), **ou** caminho de um sprint (`docs/sprints/SPRINT-NNN-[slug].md`) — nesse caso, siga **Plan de sprint em paralelo** (abaixo): pesquisa externa uma vez, depois um sub-agent por issue pendente.
 
 Leia `Constitution.md` e `steering/` se existirem — definem restrições que devem ser respeitadas no plano.
 Leia `docs/data-model.md` e o contrato relevante em `docs/contracts/` se existirem.
 Leia a issue completa, incluindo os campos `Implements`, `Depends on` e `Can parallelize with`.
+
+### Plan de sprint em paralelo (alvo = sprint)
+
+1. **Fila:** liste as issues do sprint sem `## Arquivos a criar` preenchido. As já enriquecidas ficam de fora. Fila vazia → vá direto ao Bloco de Handoff.
+2. **Pesquisa externa uma vez (Passo 2), pelo orquestrador:** o que o sprint todo precisa de documentação. Grave o resultado em `docs/research.md` (seção `## Plan SPRINT-NNN`) — os sub-agents leem de lá, o prompt leva só o path.
+3. **Fan-out:** um sub-agent por issue da fila, todos na **mesma mensagem** (lotes de até 6), `subagent_type: general-purpose` com `model: "sonnet"` e `effort: "high"` explícitos (regra **Despacho explícito**). Cada um roda os Passos 1 e 3 para **a sua** issue e escreve **só** o arquivo dela. Prompt: path da issue, do sprint, de `docs/research.md`, `docs/data-model.md` e do contrato relevante; Constitution e steering. Retorno (≤ 5 linhas): status, arquivos a criar/modificar (só os paths), dúvidas.
+4. **Conferência do orquestrador (não delegue):** com as listas de paths devolvidas, cheque (a) duas issues da **mesma wave** tocando o mesmo arquivo → mova uma de wave ou funda, e atualize `## Waves` do sprint; (b) duas issues criando o mesmo utilitário/tipo → aponte uma como dona e a outra como consumidora (`Depends on`). Só o orquestrador escreve em sprint.md, STATE.md e DECISIONS.md.
+5. Sub-agent que voltou `Blocked`/`Partial` → 1 redespacho; persistiu → enriqueça essa issue no próprio orquestrador.
+
+Com alvo = **issue isolada**, rode os Passos 1-3 direto, sem fan-out.
 
 **Passo 1 — Pesquisa interna**
 Delegue a um agente de exploração — `code-explorer` (`~/.claude/plugins/marketplaces/claude-plugins-official/plugins/feature-dev/agents/code-explorer.md`) se instalado, senão o agente nativo **`Explore`** (read-only) — para:

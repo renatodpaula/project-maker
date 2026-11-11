@@ -57,7 +57,7 @@ Todas as issues do sprint são commitadas nesta mesma branch (1 commit por issue
 
 Leia a seção `## Waves` do sprint.md. Execute **wave por wave**, na ordem do DAG. Dentro de uma wave, dispare um sub-agent por issue **em paralelo** (issues `[P]` que não colidem em arquivo). A wave seguinte só começa quando todas as issues da anterior fecharam.
 
-**Como paralelizar (regra Despacho em foreground):** todos os implementers da wave numa **única mensagem**, cada chamada Agent com `run_in_background: false`; quando voltarem, todos os validators da wave numa única mensagem, também em foreground. Nunca termine o turno esperando notificação de agente em background — em `claude -p` e dentro de agente de etapa isso mata os sub-agents pendentes.
+**Como paralelizar (regra Despacho e espera):** todos os implementers da wave numa **única mensagem**. **Sem barreira entre issues:** assim que o resultado de um implementer chega, despache o validator **dele**, sem esperar os outros implementers da wave; as correções (2.4) também seguem por issue. A wave fecha quando todas as issues dela fecharam ou bloquearam. (Se a sua ferramenta Agent é bloqueante — schema com `run_in_background`, passado como `false` —, o lote volta junto: aí despache todos os validators numa única mensagem.) Nunca feche o modo com sub-agent pendente.
 
 > **Parallel Write Safety:** dentro da wave, sub-agents implementam e retornam resultado, mas **só o orquestrador** escreve em STATE/PRD/DECISIONS/KNOWLEDGE, serializando ao fim da wave (ver Harness Rules). Sub-agent nunca edita living doc direto.
 
@@ -89,10 +89,19 @@ Escolha o agente conforme o tipo de arquivo da issue:
 | Arquivos de teste | `test-writer` |
 
 **Como despachar (em ordem de preferência):**
-1. **Agente registrado** — se o agente existe em `.claude/agents/` do projeto (instalado pelo `/init` Passo 4), dispare via `subagent_type` com o nome da tabela. O frontmatter cuida de tools e model default.
+1. **Agente registrado** — se o agente existe em `.claude/agents/` do projeto (instalado pelo `/init` Passo 4), dispare via `subagent_type` com o nome da tabela. O frontmatter cuida das tools; `model` e `effort` vão na chamada.
 2. **Fallback** — leia `references/agents/[nome].md` do skill e use o conteúdo como prompt de um sub-agent genérico.
 
-**Model Routing (regra Model Advisor):** se a issue tem `Model hint: Opus/Fable` e o Agent tool suporta override de `model`, passe no dispatch **desta issue** o `model` da linha "issue com Model hint" da tabela Roteamento por etapa (balanced `opus`, max `fable`, econ sem override). Hint `Sonnet` ou ausente → não passe override (herda o default). Vale para os dois modos de dispatch. O override por chamada **vence** o `model:` do frontmatter do agente registrado — passar `model: opus` num agente com `model: sonnet` funciona.
+**Model Routing (regras Model Advisor e Despacho explícito):** **toda** chamada de implementer leva `model` e `effort`, nos dois modos de dispatch. Issue com `Model hint: Opus/Fable` → o `model` da linha "issue com Model hint" da tabela Roteamento por etapa (balanced `opus`, max `fable`, econ `sonnet`). Hint `Sonnet` ou ausente → `model: "sonnet"`. `effort: "high"` em todas. Nunca despache sem `model`: no fallback o agente genérico herda o modelo da sessão. O valor por chamada **vence** o frontmatter do agente registrado. Na tentativa 3, aplique a **Escalada por falha** (2.4).
+
+**Worktree isolada (opt-in, só no modo manual).** Por padrão os implementers da wave dividem a árvore do sprint — é o que a verificação de colisão do `/break` torna seguro. Use `isolation: "worktree"` na chamada quando o usuário pedir, ou quando a wave tem 3+ issues **e** o `Gate` delas roda build/typecheck do projeto inteiro (arquivo pela metade de uma irmã quebra o Gate das outras). Verificado no 2.1.322:
+- A worktree nasce em `.claude/worktrees/agent-<id>`, num branch `worktree-agent-<id>`, a partir do **branch default do remoto** (`origin/main`), **não** do HEAD do sprint. Por isso o prompt leva o SHA do sprint (`git rev-parse HEAD`) e a primeira ação do implementer é `git checkout -B pm/SPRINT-NNN-<slug-issue> <sha>`.
+- Ela só tem arquivos rastreados: sem `node_modules`, sem `.env.local`. O implementer instala as dependências antes do Gate (custo de tempo por issue — é o preço do isolamento).
+- O implementer **commita na worktree** (`feat(SPRINT-NNN/[slug-issue]): …`) e devolve o SHA. O validator recebe `git diff <sha-do-sprint>..<sha-da-issue>`.
+- Depois do `pass`, o orquestrador traz o commit, uma issue por vez: `git cherry-pick <sha-da-issue>` no branch do sprint. Conflito no cherry-pick = colisão que o `/break` não viu: pare e trate como falha da issue.
+- Limpeza ao fechar a wave: `git worktree remove --force <path>` e `git branch -D <branch>` de cada worktree (o resultado da chamada traz path e branch).
+
+Com `--autopilot`, não use worktree: o guard nega `git branch -D` a sub-agente e os branches ficariam órfãos.
 
 **Contexto que o implementer recebe** (regras de Sub-Agent Delegation):
 - A issue completa (Descrição, Cenários, Done when, Tests, Gate, Arquivos a criar/modificar, Padrões)
@@ -112,11 +121,11 @@ Escolha o agente conforme o tipo de arquivo da issue:
 
 **2.3 — Spawn do validator** (sub-agent SEPARADO)
 
-Dispare o `validator` como sub-agent independente — mesma ordem de preferência do 2.2: `subagent_type: validator` se registrado em `.claude/agents/`, senão `references/agents/validator.md` como prompt. O validator **nunca** implementa — só avalia. Registrado, o frontmatter dele não inclui Write/Edit — edits diretos bloqueados pelo harness (o Bash do Gate permanece; ver nota do `/init` Passo 4).
+Dispare o `validator` como sub-agent independente — mesma ordem de preferência do 2.2: `subagent_type: validator` se registrado em `.claude/agents/`, senão `references/agents/validator.md` como prompt. Despache com `model: "sonnet"` e `effort: "high"` explícitos. O validator **nunca** implementa — só avalia. Registrado, o frontmatter dele não inclui Write/Edit — edits diretos bloqueados pelo harness (o Bash do Gate permanece; ver nota do `/init` Passo 4).
 
 **Contexto que o validator recebe:**
 - Issue original (antes da implementação)
-- `git diff sprint/[slug]` da issue
+- Diff **só da issue**: `git diff HEAD -- <Files changed>` + `git status --porcelain -- <Files changed>` (arquivo novo ainda não rastreado). Com a árvore dividida por issues paralelas, um `git diff` sem paths mistura o trabalho das outras
 - Gate check result reportado pelo implementer
 - Spec Deviations reportados pelo implementer
 - Spec.md, Constitution.md, steering/, data-model.md, contracts/ relevantes
@@ -129,13 +138,14 @@ Dispare o `validator` como sub-agent independente — mesma ordem de preferênci
 
 - Se validator `pass` → prossiga para 2.5
 - Se validator `fail` e tentativas < 3 → re-dispatch do **implementer** passando os Gaps do validator como instruções de correção. Volta para 2.3.
+- **Escalada por falha:** as tentativas 1 e 2 rodam no modelo da issue; a **tentativa 3 sobe um degrau** (`sonnet` → `opus` → `fable`; já em `fable`, repete). Vale em todos os perfis: custa só quando a issue falhou duas vezes e troca uma parada humana por uma tentativa mais forte. Registre no Summary o modelo de cada tentativa. (Não medido no benchmark.)
 - Se tentativas == 3 → registre em `STATE.md` como blocker com o histórico das 3 tentativas, marque issue como `⏸ blocked` no PRD, pule para a próxima issue
 
 **Limite absoluto: 3 iterações por issue.** Não estender. Quebrar o loop é o comportamento correto — fabricar pass é o errado.
 
 **2.5 — Fechar issue**
 
-- Commit: `git commit -m "feat(SPRINT-NNN/[slug-issue]): [título da issue]"`
+- Commit **pelo orquestrador**, só dos arquivos da issue: `git add <Files changed> && git commit -m "feat(SPRINT-NNN/[slug-issue]): [título da issue]"`. Nunca `git add -A` com outras issues da wave em andamento; implementer e validator não commitam.
 - Preencha `## Summary` da issue com Status, Files changed, Gate result, Issues encontradas, Spec Deviations (lista completa ou `none`)
 - Se houver deviation que afeta data-model, contracts, ou outras issues do sprint, sinalize e atualize os arquivos afetados nesta mesma sessão
 - Atualize `PRD.md` (se existir): status da issue → `✅ entregue`

@@ -70,7 +70,7 @@ Complexity decides depth, not the other way around. The skill sizes itself autom
 /project-maker autopilot status | stop | resume
 ```
 
-- **Conductor + stage agents.** Your session dispatches one sub-agent per stage (`pm-stage-workhorse` = Sonnet · high; `pm-stage-reasoning` = Fable · high in `max`). Each has `model` and `effort` in its frontmatter. The sub-agent runs the mode with `--autopilot` and returns a short status block (`PM_STAGE_RESULT`). The conductor checks that block with one-line sensors (the path exists, the tree is clean, `next` matches `STATE.md`) instead of trusting it.
+- **Conductor + stage agents.** Your session dispatches one sub-agent per stage and passes `model` and `effort` on every call (Sonnet · high by default; Fable · high for `/break` in `max`). The `pm-stage-*` agents are optional. The sub-agent runs the mode with `--autopilot` and returns a short status block (`PM_STAGE_RESULT`). The conductor checks that block with one-line sensors (the path exists, the tree is clean, `next` matches `STATE.md`) instead of trusting it.
 - **It only stops for you, in two batched screens.**
   - **T0, at the start:** how far to go, push/PR policy, UAT policy, and cost profile.
   - **G1, after `/break`:** suspicious packages, required secrets, and high-risk assumptions.
@@ -115,7 +115,8 @@ Rough cost per stage (balanced, API prices): break ~$3, execute of a 10-issue sp
 ### Harness Engineering features
 
 - **Fresh-context sub-agents.** The orchestrator stays lean (under 40k tokens). Heavy work runs in isolated agents that start clean, which defeats context rot.
-- **Foreground dispatch.** Sub-agents are always dispatched with `run_in_background: false`, and parallelism comes from several calls in one message. The benchmark caught a headless `/execute` losing 5 background sub-agents when the orchestrator ended its turn.
+- **Dispatch and wait.** Parallelism comes from several Agent calls in one message. Sub-agents run in the background and report by notification, so no mode closes while a child is still pending. Every call carries an explicit `model` and `effort`, so nothing inherits the session's model.
+- **Escalation on failure.** The third attempt at an issue runs one model tier up (`sonnet` → `opus` → `fable`) before a human is asked.
 - **Validator loop.**
   - Every issue is checked by an independent validator: threshold 80, 0/1 gate check, stub and fabrication detection.
   - Max 3 attempts, then it stops. It never fabricates a pass.
@@ -171,7 +172,7 @@ bash ~/.claude/skills/project-maker/scripts/install.sh   # installs the autopilo
 
 Restart Claude Code, then use `/project-maker` in any project. To update later, run `git -C ~/.claude/skills/project-maker pull` and then `install.sh` again.
 
-`install.sh` matters for the autopilot. Claude Code only loads agents when a session starts, so an agent copied mid-session isn't available. Without the stage agents, each stage would inherit your session's effort instead of the measured one. If they're missing, the autopilot stops before the first stage and asks.
+`install.sh` is optional. The conductor passes `model` and `effort` on every call, so without the stage agents the autopilot runs the same on the generic agent. Claude Code only loads agents when a session starts, so restart after installing.
 
 ### Usage
 
@@ -199,6 +200,13 @@ evals/model-bench/          model benchmark harness, hidden tests, results
 
 ### What's new
 
+- **v3.3** (checked on Claude Code 2.1.322)
+  - **Dispatch and wait** replaces foreground dispatch: `run_in_background` is not in every Agent schema anymore.
+  - **Explicit dispatch:** `model` and `effort` on every Agent call. The effort gate is gone and `install.sh` is optional.
+  - **Escalation on failure:** attempt 3 of an issue runs one tier up.
+  - **Waves without a barrier:** each issue's validator starts when its implementer returns. The orchestrator commits, one issue at a time.
+  - **Worktree isolation** for implementers, opt-in in manual mode.
+  - **Parallel `/plan`** for a sprint: one sub-agent per issue.
 - **v3.2.1**
   - **Effort gate:** the autopilot never runs a stage at an unmeasured effort without asking.
   - **`scripts/install.sh`** installs the stage agents at user level.
@@ -283,7 +291,7 @@ A complexidade decide a profundidade, não o contrário. A skill se dimensiona s
 /project-maker autopilot status | stop | resume
 ```
 
-- **Condutor + agentes de etapa.** Sua sessão despacha um sub-agente por etapa (`pm-stage-workhorse` = Sonnet · high; `pm-stage-reasoning` = Fable · high no `max`). Cada um tem `model` e `effort` no frontmatter. O sub-agente roda o modo com `--autopilot` e devolve um bloco curto de status (`PM_STAGE_RESULT`). Em vez de confiar nesse bloco, o condutor confere com sensores de 1 linha (o path existe, a árvore está limpa, o `next` bate com o `STATE.md`).
+- **Condutor + agentes de etapa.** Sua sessão despacha um sub-agente por etapa e passa `model` e `effort` em toda chamada (Sonnet · high por padrão; Fable · high no `/break` do `max`). Os agentes `pm-stage-*` são opcionais. O sub-agente roda o modo com `--autopilot` e devolve um bloco curto de status (`PM_STAGE_RESULT`). Em vez de confiar nesse bloco, o condutor confere com sensores de 1 linha (o path existe, a árvore está limpa, o `next` bate com o `STATE.md`).
 - **Só para por você, em duas telas.**
   - **T0, no início:** até onde ir, política de push/PR, política de UAT e perfil de custo.
   - **G1, depois do `/break`:** pacotes suspeitos, segredos exigidos e suposições de alto risco.
@@ -328,7 +336,8 @@ Custo aproximado por etapa (balanced, preço de API): break ~$3; execute de um s
 ### Recursos de Harness Engineering
 
 - **Sub-agentes de contexto limpo.** O orquestrador fica enxuto (menos de 40k tokens). O trabalho pesado roda em agentes isolados que começam do zero, o que derrota o context rot.
-- **Despacho em foreground.** Sub-agentes sempre saem com `run_in_background: false`, e o paralelismo vem de várias chamadas numa mesma mensagem. O benchmark pegou um `/execute` headless perdendo 5 sub-agentes em background quando o orquestrador encerrou o turno.
+- **Despacho e espera.** O paralelismo vem de várias chamadas Agent numa mesma mensagem. Os sub-agentes rodam em background e respondem por notificação, então nenhum modo fecha com filho pendente. Toda chamada leva `model` e `effort` explícitos, e nada herda o modelo da sessão.
+- **Escalada por falha.** A terceira tentativa de uma issue roda um tier de modelo acima (`sonnet` → `opus` → `fable`) antes de chamar o humano.
 - **Loop de validação.**
   - Toda issue é checada por um validator independente: threshold 80, gate check 0/1, detecção de stub e fabricação.
   - Máximo de 3 tentativas; depois ele para. Nunca fabrica um "pass".
@@ -384,7 +393,7 @@ bash ~/.claude/skills/project-maker/scripts/install.sh   # instala os agentes de
 
 Reinicie o Claude Code e use `/project-maker` em qualquer projeto. Para atualizar depois, rode `git -C ~/.claude/skills/project-maker pull` e depois o `install.sh` de novo.
 
-O `install.sh` importa para o autopilot. O Claude Code só carrega agentes quando a sessão começa, então agente copiado no meio da sessão não fica disponível. Sem os agentes de etapa, cada etapa herdaria o effort da sua sessão em vez do effort medido. Se eles faltarem, o autopilot para antes da primeira etapa e pergunta.
+O `install.sh` é opcional. O condutor passa `model` e `effort` em toda chamada, então sem os agentes de etapa o autopilot roda igual no agente genérico. O Claude Code só carrega agentes quando a sessão começa: reinicie depois de instalar.
 
 ### Uso
 
@@ -412,6 +421,13 @@ evals/model-bench/          harness do benchmark de modelos, testes ocultos, res
 
 ### Novidades
 
+- **v3.3** (conferido no Claude Code 2.1.322)
+  - **Despacho e espera** substitui o despacho em foreground: `run_in_background` não está mais em todo schema da Agent.
+  - **Despacho explícito:** `model` e `effort` em toda chamada Agent. O portão de effort saiu e o `install.sh` virou opcional.
+  - **Escalada por falha:** a tentativa 3 de uma issue roda um tier acima.
+  - **Waves sem barreira:** o validator de cada issue sai quando o implementer dela volta. O orquestrador commita, uma issue por vez.
+  - **Worktree isolada** para implementers, opt-in no modo manual.
+  - **`/plan` de sprint em paralelo:** um sub-agent por issue.
 - **v3.2.1**
   - **Portão de effort:** o autopilot nunca roda uma etapa num effort não medido sem perguntar.
   - **`scripts/install.sh`** instala os agentes de etapa no nível do usuário.
