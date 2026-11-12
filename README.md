@@ -6,7 +6,7 @@
 
 `discover → init → spec → break → plan → execute → verify → secure → ship`
 
-MIT License · v3.5.0 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
+MIT License · v3.5.1 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
 
 [English](#english) · [Português](#português)
 
@@ -212,11 +212,12 @@ evals/model-bench/          model benchmark harness (with a no-skill baseline), 
 
 ### What's new
 
+- **v3.5.1** — `pm.py` fixes found by running the modes end to end on toy projects in both layouts: `coverage` no longer reports another spec's requirements as unknown when two specs share `docs/issues/` (it follows each issue's `Spec relacionada`); `waves` and `status` read issues only from the sprint's `## Issues` section, so a `.md` cited in the notes is not an issue; `status` reads the SECURITY state from the file body. 40 test cases.
 - **v3.5**
   - **One folder per feature.** `/spec feature` now creates `docs/specs/FEAT-NNN-slug/` with `spec.md`, `context.md`, `sprints/` and `issues/` inside, so a feature's artifacts stop mixing with the others. The project spec (`Spec.md`) keeps `docs/sprints/` and `docs/issues/`.
   - **No migration.** Both layouts are read in the same project. Existing sprints, issues and single-file feature specs stay where they are, and a run in progress resumes untouched.
   - **`pm.py paths [spec]`** returns where that spec's sprints and issues go and the next SPRINT and FEAT numbers, so the model stops computing them.
-  - **`pm.py` ignores nested repos.** A clone or worktree inside the project (a `staging/` mirror, for example) no longer adds its sprints and issues to `status`, `next` and `coverage`. `coverage` on a feature folder counts only that folder's issues. 33 test cases.
+  - **`pm.py` ignores nested repos.** A clone or worktree inside the project (a `staging/` mirror, for example) no longer adds its sprints and issues to `status`, `next` and `coverage`. `coverage` on a feature folder counts only that folder's issues.
 - **v3.4** (checked on Claude Code 2.1.322)
   - **The validator stops trusting the implementer.** It runs the gate itself and checks `git status` against the declared files. The 0–100 score is gone: pass needs every criterion met. New `inconclusive` verdict when a sibling issue's half-written file breaks the gate.
   - **Red proof.** A test created in an issue must be seen failing before the implementation.
@@ -462,11 +463,12 @@ evals/model-bench/          harness do benchmark (com controle sem skill), teste
 
 ### Novidades
 
+- **v3.5.1** — correções no `pm.py` achadas rodando os modos de ponta a ponta em projetos-brinquedo nos dois layouts: o `coverage` deixa de acusar como inexistente o requisito de outra spec quando duas specs dividem `docs/issues/` (segue a `Spec relacionada` de cada issue); `waves` e `status` leem as issues só da seção `## Issues` do sprint, e um `.md` citado nas notas não vira issue; o `status` lê o estado do SECURITY no corpo do arquivo. 40 casos de teste.
 - **v3.5**
   - **Uma pasta por feature.** O `/spec feature` passa a criar `docs/specs/FEAT-NNN-slug/` com `spec.md`, `context.md`, `sprints/` e `issues/` dentro, e os artefatos de uma feature deixam de se misturar com os das outras. A spec do projeto (`Spec.md`) continua com `docs/sprints/` e `docs/issues/`.
   - **Sem migração.** Os dois layouts são lidos no mesmo projeto. Sprints, issues e specs de feature em arquivo solto ficam onde estão, e um run em andamento retoma sem mudança.
   - **`pm.py paths [spec]`** devolve onde gravar os sprints e as issues daquela spec e os próximos números de SPRINT e FEAT, e o modelo para de calcular isso.
-  - **O `pm.py` ignora repositório aninhado.** Um clone ou worktree dentro do projeto (um espelho em `staging/`, por exemplo) deixa de somar sprints e issues no `status`, no `next` e no `coverage`. O `coverage` de uma pasta de feature conta só as issues dela. 33 casos de teste.
+  - **O `pm.py` ignora repositório aninhado.** Um clone ou worktree dentro do projeto (um espelho em `staging/`, por exemplo) deixa de somar sprints e issues no `status`, no `next` e no `coverage`. O `coverage` de uma pasta de feature conta só as issues dela.
 - **v3.4** (conferido no Claude Code 2.1.322)
   - **O validator deixa de confiar no implementer.** Roda o Gate ele mesmo e confere o `git status` contra os arquivos declarados. A nota 0–100 saiu: pass exige todos os critérios. Veredito novo `inconclusive` quando o arquivo pela metade de uma issue irmã quebra o Gate.
   - **Red proof.** Teste criado numa issue tem que ser visto falhando antes da implementação.

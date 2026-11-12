@@ -51,6 +51,11 @@ check 1 "next: comando que não é do skill"           next
 # --- status
 check 0 "status: lista sprints"                      status
 
+printf '# SECURITY\n\n## Frontmatter de estado\n\n```yaml\nthreats_open: 0\n```\n' > "$T/docs/sprints/SPRINT-001-SECURITY.md"
+printf -- '---\nstatus: complete\n---\n# UAT\n' > "$T/docs/sprints/SPRINT-001-uat.md"
+python3 "$PM" --root "$T" status | grep -q "uat:complete security:0" && echo "ok    saída   status: lê UAT e SECURITY ao lado do sprint" || { echo "FAIL  status não leu uat/security"; fails=$((fails+1)); }
+rm "$T/docs/sprints/SPRINT-001-SECURITY.md" "$T/docs/sprints/SPRINT-001-uat.md"
+
 # --- coverage
 check 0 "coverage: todos os REQs com issue"          coverage
 issue docs/issues/functional/03-c.md "REQ-9" src/c.js
@@ -88,6 +93,9 @@ check 0 "coverage: feature só conta as issues da própria pasta"   coverage "$F
 check 0 "coverage: layout plano ignora issues de pasta de feature" coverage Spec.md
 check 1 "coverage: sem path com duas specs no disco"             coverage
 check 0 "waves: sprint dentro da pasta da feature"               waves "$F/sprints/SPRINT-002-cobranca.md"
+printf '\n## Reassess Notes\n\n- Segue pendente o REQ-3 da `Spec.md` do projeto.\n' >> "$T/$F/sprints/SPRINT-002-cobranca.md"
+check 0 "waves: .md citado fora da seção Issues não é issue"     waves "$F/sprints/SPRINT-002-cobranca.md"
+out "issues=2 "             "status: conta só as issues da seção Issues" status
 out "sprints: $F/sprints"   "paths: feature grava na própria pasta"   paths "$F/spec.md"
 out "issues: $F/issues"     "paths: issues da feature"                paths "$F/spec.md"
 out "sprints: docs/sprints" "paths: Spec.md da raiz segue no layout plano" paths Spec.md
@@ -97,6 +105,16 @@ out "$F/sprints/SPRINT-002-cobranca.md" "status: lista sprint de pasta de featur
 printf '# Spec\n\n- REQ-1 z\n' > "$T/docs/specs/FEAT-003-antiga.md"
 printf '# Context\n' > "$T/docs/specs/FEAT-003-antiga.context.md"
 out "layout: flat"          "paths: spec de feature em arquivo solto segue no plano" paths docs/specs/FEAT-003-antiga.md
+# duas specs no layout plano dividindo docs/issues/: cada issue conta só para a spec que ela declara
+issue docs/issues/functional/04-z.md "REQ-1" src/z.js
+sed -i.bak 's|^Implements: REQ-1$|**Spec relacionada**: `docs/specs/FEAT-003-antiga.md`\
+Implements: REQ-1|' "$T/docs/issues/functional/04-z.md" && rm "$T/docs/issues/functional/04-z.md.bak"
+check 0 "coverage: spec solta só conta as issues que a declaram" coverage docs/specs/FEAT-003-antiga.md
+check 0 "coverage: Spec.md ignora issue que declara outra spec"  coverage Spec.md
+rm "$T/docs/issues/functional/04-z.md"
+printf '# Spec\n\n- REQ-7 z\n' > "$T/docs/specs/FEAT-003-antiga.md"
+check 1 "coverage: spec solta com REQ sem issue reprova, sem acusar REQ das outras" coverage docs/specs/FEAT-003-antiga.md
+check 0 "coverage: issue sem spec declarada não vira REQ inexistente" coverage Spec.md
 rm "$T/docs/specs/FEAT-003-antiga.md" "$T/docs/specs/FEAT-003-antiga.context.md"; rm -r "$T/$F"
 
 # --- repo aninhado (clone ou worktree dentro do projeto) não entra na conta
