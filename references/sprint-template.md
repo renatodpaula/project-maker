@@ -28,6 +28,7 @@
 
 > Regra de ferro: **uma issue tem que caber em uma janela de contexto. Se não cabe, são duas.**
 > Marque paralelismo com `[P]` — issues sem dependências entre si podem rodar em paralelo.
+> Path completo a partir da raiz do projeto. Em pasta de feature: `docs/specs/FEAT-NNN-[slug]/issues/functional/01-….md`.
 
 - [ ] `docs/issues/prototype/01-pagina-login.md`
 - [ ] `docs/issues/prototype/02-pagina-dashboard.md` [P]

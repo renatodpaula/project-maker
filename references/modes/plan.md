@@ -3,7 +3,7 @@
 > Parte do skill **project-maker**. Pré-requisito: auto-sizing + Harness Rules do SKILL.md já carregados.
 > **Com `--autopilot`** (rodando dentro do `/project-maker autopilot`): aplique `references/autopilot/stage-contract.md` — linha `plan` da tabela §2. Pergunta vira decisão no bloco `PM_STAGE_RESULT`; a resposta final é só o bloco.
 
-**Argumento:** caminho ou nome da issue (ex: `docs/issues/prototype/01-pagina-login.md`), **ou** caminho de um sprint (`docs/sprints/SPRINT-NNN-[slug].md`) — nesse caso, siga **Plan de sprint em paralelo** (abaixo): pesquisa externa uma vez, depois um sub-agent por issue pendente.
+**Argumento:** caminho ou nome da issue (ex: `docs/issues/prototype/01-pagina-login.md`), **ou** caminho de um sprint (`SPRINT-NNN-[slug].md`, em `docs/sprints/` ou na pasta de uma feature) — nesse caso, siga **Plan de sprint em paralelo** (abaixo): pesquisa externa uma vez, depois um sub-agent por issue pendente.
 
 Leia `Constitution.md` e `steering/` se existirem — definem restrições que devem ser respeitadas no plano.
 Leia `docs/data-model.md` e o contrato relevante em `docs/contracts/` se existirem.

@@ -6,7 +6,7 @@
 
 `discover → init → spec → break → plan → execute → verify → secure → ship`
 
-MIT License · v3.4.0 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
+MIT License · v3.5.0 · by [@renatodpaula.ai](https://instagram.com/renatodpaula.ai) · [Wiki](https://github.com/renatodpaula/project-maker/wiki)
 
 [English](#english) · [Português](#português)
 
@@ -160,12 +160,13 @@ Rough cost per stage (balanced, API prices): break ~$3, execute of a 10-issue sp
 | Where | Files |
 |---|---|
 | Project root | `brief.md` · `Constitution.md` · `Spec.md` · `context.md` · `PRD.md` · `STATE.md` · `DECISIONS.md` · `KNOWLEDGE.md` · `steering/` · a pointer block in `CLAUDE.md` |
-| `docs/` | `specs/FEAT-NNN-slug.md` (one per feature, with its `.context.md`) · `research.md` (with Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (with waves) · `issues/` |
-| Per sprint | `docs/sprints/SPRINT-NNN-uat.md` · `docs/sprints/SPRINT-NNN-SECURITY.md` |
+| `docs/` | `research.md` (with Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (with waves) and `issues/` of the project spec |
+| `docs/specs/FEAT-NNN-slug/` | one folder per feature: `spec.md` · `context.md` · `sprints/` · `issues/` |
+| Per sprint | `SPRINT-NNN-uat.md` · `SPRINT-NNN-SECURITY.md`, next to the sprint file |
 | `.claude/agents/` | writers, validator, `pm-stage-workhorse`, `pm-stage-reasoning` (only without the plugin) |
 | Autopilot only | `.pm-autopilot/ledger.md` and `guard.log` (git-excluded) · PR body/title drafts · `.git/hooks/pre-push` |
 
-An existing project convention for artifact locations wins, and it's recorded in `steering/structure.md`.
+Both layouts live side by side: projects created before v3.5 keep `docs/sprints/` and `docs/issues/` (and single-file feature specs, `docs/specs/FEAT-NNN-slug.md`), and nothing already written is moved. Sprint numbers are unique across the project. An existing project convention for artifact locations wins, and it's recorded in `steering/structure.md`.
 
 ### Installation
 
@@ -202,7 +203,7 @@ references/agents/          writers, validator, stage agents (Claude Code frontm
 references/*-template.md    artifact templates
 references/model-advisor.md benchmark numbers, cost per stage, limits of what was measured
 references/harness-notes.md harness probes per Claude Code version, lessons from real runs
-scripts/pm.py               deterministic sensors: next · status · coverage · waves
+scripts/pm.py               deterministic sensors: next · status · coverage · waves · paths
 scripts/                    pm-guard.sh + pm-pre-push.sh (two-layer guard) · lint-skill.sh · test suites
 .claude-plugin/ · hooks/    plugin manifest, marketplace entry, guard hook registration
 evals/scenarios.md          skill self-test scenarios
@@ -211,6 +212,11 @@ evals/model-bench/          model benchmark harness (with a no-skill baseline), 
 
 ### What's new
 
+- **v3.5**
+  - **One folder per feature.** `/spec feature` now creates `docs/specs/FEAT-NNN-slug/` with `spec.md`, `context.md`, `sprints/` and `issues/` inside, so a feature's artifacts stop mixing with the others. The project spec (`Spec.md`) keeps `docs/sprints/` and `docs/issues/`.
+  - **No migration.** Both layouts are read in the same project. Existing sprints, issues and single-file feature specs stay where they are, and a run in progress resumes untouched.
+  - **`pm.py paths [spec]`** returns where that spec's sprints and issues go and the next SPRINT and FEAT numbers, so the model stops computing them.
+  - **`pm.py` ignores nested repos.** A clone or worktree inside the project (a `staging/` mirror, for example) no longer adds its sprints and issues to `status`, `next` and `coverage`. `coverage` on a feature folder counts only that folder's issues. 33 test cases.
 - **v3.4** (checked on Claude Code 2.1.322)
   - **The validator stops trusting the implementer.** It runs the gate itself and checks `git status` against the declared files. The 0–100 score is gone: pass needs every criterion met. New `inconclusive` verdict when a sibling issue's half-written file breaks the gate.
   - **Red proof.** A test created in an issue must be seen failing before the implementation.
@@ -404,12 +410,13 @@ Custo aproximado por etapa (balanced, preço de API): break ~$3; execute de um s
 | Onde | Arquivos |
 |---|---|
 | Raiz do projeto | `brief.md` · `Constitution.md` · `Spec.md` · `context.md` · `PRD.md` · `STATE.md` · `DECISIONS.md` · `KNOWLEDGE.md` · `steering/` · um bloco de ponteiro no `CLAUDE.md` |
-| `docs/` | `specs/FEAT-NNN-slug.md` (uma por feature, com o `.context.md` dela) · `research.md` (com Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (com waves) · `issues/` |
-| Por sprint | `docs/sprints/SPRINT-NNN-uat.md` · `docs/sprints/SPRINT-NNN-SECURITY.md` |
+| `docs/` | `research.md` (com Package Legitimacy Audit) · `data-model.md` · `contracts/` · `sprints/` (com waves) e `issues/` da spec do projeto |
+| `docs/specs/FEAT-NNN-slug/` | uma pasta por feature: `spec.md` · `context.md` · `sprints/` · `issues/` |
+| Por sprint | `SPRINT-NNN-uat.md` · `SPRINT-NNN-SECURITY.md`, ao lado do arquivo do sprint |
 | `.claude/agents/` | writers, validator, `pm-stage-workhorse`, `pm-stage-reasoning` (só sem o plugin) |
 | Só no autopilot | `.pm-autopilot/ledger.md` e `guard.log` (fora do git) · rascunhos do corpo e do título do PR · `.git/hooks/pre-push` |
 
-Se o projeto já tem uma convenção para a localização dos artefatos, ela vence e fica registrada em `steering/structure.md`.
+Os dois layouts convivem: projeto criado antes da v3.5 continua com `docs/sprints/` e `docs/issues/` (e com spec de feature em arquivo solto, `docs/specs/FEAT-NNN-slug.md`), e nada que já foi gravado muda de lugar. O número do sprint é único no projeto inteiro. Se o projeto já tem uma convenção para a localização dos artefatos, ela vence e fica registrada em `steering/structure.md`.
 
 ### Instalação
 
@@ -446,7 +453,7 @@ references/agents/          writers, validator, agentes de etapa (frontmatter Cl
 references/*-template.md    templates dos artefatos
 references/model-advisor.md números do benchmark, custo por etapa, limites do que foi medido
 references/harness-notes.md sondas do harness por versão do Claude Code, lições de runs reais
-scripts/pm.py               sensores determinísticos: next · status · coverage · waves
+scripts/pm.py               sensores determinísticos: next · status · coverage · waves · paths
 scripts/                    pm-guard.sh + pm-pre-push.sh (guard em duas camadas) · lint-skill.sh · suítes
 .claude-plugin/ · hooks/    manifesto de plugin, entrada de marketplace, registro do hook do guard
 evals/scenarios.md          cenários de auto-teste do skill
@@ -455,6 +462,11 @@ evals/model-bench/          harness do benchmark (com controle sem skill), teste
 
 ### Novidades
 
+- **v3.5**
+  - **Uma pasta por feature.** O `/spec feature` passa a criar `docs/specs/FEAT-NNN-slug/` com `spec.md`, `context.md`, `sprints/` e `issues/` dentro, e os artefatos de uma feature deixam de se misturar com os das outras. A spec do projeto (`Spec.md`) continua com `docs/sprints/` e `docs/issues/`.
+  - **Sem migração.** Os dois layouts são lidos no mesmo projeto. Sprints, issues e specs de feature em arquivo solto ficam onde estão, e um run em andamento retoma sem mudança.
+  - **`pm.py paths [spec]`** devolve onde gravar os sprints e as issues daquela spec e os próximos números de SPRINT e FEAT, e o modelo para de calcular isso.
+  - **O `pm.py` ignora repositório aninhado.** Um clone ou worktree dentro do projeto (um espelho em `staging/`, por exemplo) deixa de somar sprints e issues no `status`, no `next` e no `coverage`. O `coverage` de uma pasta de feature conta só as issues dela. 33 casos de teste.
 - **v3.4** (conferido no Claude Code 2.1.322)
   - **O validator deixa de confiar no implementer.** Roda o Gate ele mesmo e confere o `git status` contra os arquivos declarados. A nota 0–100 saiu: pass exige todos os critérios. Veredito novo `inconclusive` quando o arquivo pela metade de uma issue irmã quebra o Gate.
   - **Red proof.** Teste criado numa issue tem que ser visto falhando antes da implementação.

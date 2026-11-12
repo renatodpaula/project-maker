@@ -37,14 +37,14 @@ Se durante os Passos 1-2 você detectar **gray areas críticas** — decisões t
 1. Liste as gray areas detectadas (máximo 5 por rodada — mais que isso é sinal de brief insuficiente)
 2. Para cada gray area, apresente 2-4 opções com trade-offs concretos
 3. Pergunte ao usuário **uma por vez**, aguardando resposta antes da próxima
-4. Grave as decisões no context da spec — `context.md` na raiz em `/spec new`, `docs/specs/FEAT-NNN-[slug].context.md` em `/spec feature` (use `references/context-template.md` como base)
+4. Grave as decisões no context da spec — `context.md` na raiz em `/spec new`, `docs/specs/FEAT-NNN-[slug]/context.md` em `/spec feature` (use `references/context-template.md` como base)
 5. Liste também `Constraints descobertas` que saíram da conversa e vão virar REQ ou atualizar Constitution.md
 6. Se alguma gray area ficou sem resposta e você teve que assumir, registre em `Assumptions não-confirmadas` com o risco explicitado
 
 `context.md` é input obrigatório de `/plan` e `/execute` para a feature.
 
 **Passo 3 — Gerar Spec.md**
-Leia `references/spec-template.md` para o formato. **Onde gravar** (regra Localização canônica): `/spec new` → `Spec.md` na raiz; `/spec feature` → `docs/specs/FEAT-NNN-[slug].md` (NNN = maior número existente + 1). Uma feature nunca sobrescreve `Spec.md` nem outra spec.
+Leia `references/spec-template.md` para o formato. **Onde gravar** (regra Localização canônica): `/spec new` → `Spec.md` na raiz; `/spec feature` → `docs/specs/FEAT-NNN-[slug]/spec.md`, numa pasta nova (NNN = linha `next_feat` de `python3 <skill-dir>/scripts/pm.py paths`). Uma feature nunca sobrescreve `Spec.md` nem outra spec. Feature já especificada em arquivo solto (`docs/specs/FEAT-NNN-[slug].md`, layout anterior) continua onde está: edite no lugar, não mova.
 
 - **Overview** — o que é, para quem, qual problema resolve
 - **Fora de escopo** — o que esta spec decide não fazer
@@ -70,7 +70,7 @@ A spec é o contrato de tudo que vem depois: erro aqui se multiplica em issues e
 **Ao final:** exiba resumo da spec, liste marcadores `[NEEDS CLARIFICATION]` restantes se houver, e feche com o **Bloco de Handoff** (regra Next Command) — comando completo + modelo na mesma caixa:
 > **▶ Próximo passo** — `/clear` primeiro, depois:
 > ```
-> /project-maker break docs/specs/FEAT-012-prompt-caching-provider-agnostic.md
+> /project-maker break docs/specs/FEAT-012-prompt-caching-provider-agnostic/spec.md
 > ```
 > **Modelo:** Sonnet · effort high — 88,5/100 no break a 1/3 do custo do Fable (91,5, só no perfil max); Opus · medium se velocidade importa mais.
 

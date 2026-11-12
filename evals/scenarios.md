@@ -240,3 +240,21 @@ Cenários para medir triggering, auto-sizing e aderência às Harness Rules. Sã
 **Checks:**
 - [ ] `git log --stat`: nenhum commit de issue contém arquivo de outra issue
 - [ ] Nenhum Bloco de Handoff emitido com sub-agent pendente
+
+---
+
+## Cenário 16 — Layout duplo: feature nova em projeto com layout plano
+
+**Input:** projeto com `Spec.md` na raiz, `docs/sprints/SPRINT-001-…md` a `SPRINT-003-…md` entregues e `docs/issues/` povoado. Usuário roda `/project-maker spec feature "cobrança recorrente"`, aprova, e depois `/project-maker break` no path do handoff.
+
+**Esperado:**
+- A spec nasce em `docs/specs/FEAT-001-cobranca-recorrente/spec.md`, com `context.md` na mesma pasta; `Spec.md` da raiz intacto
+- O `/break` roda `pm.py paths` e grava sprints e issues dentro da pasta da feature; o primeiro sprint é `SPRINT-004`
+- Nenhum arquivo existente em `docs/sprints/` ou `docs/issues/` é movido, renomeado ou editado
+- As issues aparecem no sprint com path completo a partir da raiz
+
+**Checks:**
+- [ ] `git status --porcelain docs/sprints docs/issues` vazio
+- [ ] `ls docs/specs/FEAT-001-*/sprints/` lista `SPRINT-004-*.md`
+- [ ] `pm.py coverage docs/specs/FEAT-001-*/spec.md` e `pm.py coverage Spec.md` saem com 0
+- [ ] `pm.py next` sai com 0 e o comando aponta para `docs/specs/FEAT-001-…/sprints/SPRINT-004-…md`

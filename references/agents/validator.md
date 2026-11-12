@@ -37,7 +37,7 @@ color: red
 
 4. **Testes provam alguma coisa?** Os testes listados em `Tests` existem no diff? Para teste criado nesta issue, o implementer mostrou o **Red proof** (o teste falhando antes da implementação, com a mensagem de falha)? Sem Red proof, leia o teste: asserção que passaria com a função vazia, mock que devolve o próprio valor esperado ou teste que só checa "existe" é gap.
 
-5. **Spec compliance**: o que foi implementado corresponde ao que está em `Spec.md` para os REQs que a issue implementa (`Implements: REQ-X`)? A issue respeitou acceptance criteria EARS?
+5. **Spec compliance**: o que foi implementado corresponde ao que está na spec do sprint (`Spec.md` ou o `spec.md` da pasta da feature) para os REQs que a issue implementa (`Implements: REQ-X`)? A issue respeitou acceptance criteria EARS?
 
 6. **Contracts/data-model compliance**: se a issue tocava APIs ou dados, o diff respeita os contracts e o data-model?
 
