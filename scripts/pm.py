@@ -97,9 +97,11 @@ def feature_dir(root, spec):
 
 
 def sprint_issues(root, sprint):
-    """Paths de issue citados no sprint, na ordem, existentes ou não."""
+    """Paths de issue citados na seção ## Issues do sprint (no arquivo todo, se ela não existe), na ordem, existentes ou não."""
+    text = read(sprint)
+    sec = re.search(r"^## Issues\s*\n(.*?)(?=^## |\Z)", text, re.M | re.S)
     seen, out = set(), []
-    for ref in re.findall(r"`([^`\n]+\.md)`", read(sprint)):
+    for ref in re.findall(r"`([^`\n]+\.md)`", sec.group(1) if sec else text):
         if "SPRINT-" in ref or ref in seen:
             continue
         seen.add(ref)
@@ -173,7 +175,9 @@ def cmd_status(a):
         for suffix, key in (("uat", "status"), ("SECURITY", "threats_open")):
             f = s.parent / f"{base.group(1)}-{suffix}.md" if base else None
             if f and f.exists():
-                extra.append(f"{suffix.lower()}:{frontmatter(read(f)).get(key, '?')}")
+                # o UAT tem frontmatter no topo; o SECURITY guarda o estado num bloco yaml no corpo
+                body = re.search(rf"^{key}:\s*([^\s#]+)", read(f), re.M)
+                extra.append(f"{suffix.lower()}:{frontmatter(read(f)).get(key) or (body.group(1) if body else '?')}")
         detail = " ".join(f"{k}={v}" for k, v in sorted(counts.items()))
         print(f"{s.relative_to(a.root)}  [{status_of(read(s))}]  issues={len(issues)} planejadas={plan} {detail} {' '.join(extra)}".rstrip())
     cmd = next_command(a.root)
@@ -200,14 +204,24 @@ def cmd_coverage(a):
     # layout por feature: só as issues da pasta da spec; layout plano: todas, menos as de pastas de feature
     own = feature_dir(a.root, spec)
     others = [d for d in (feature_dir(a.root, s) for s in specs(a.root)) if d]
+    single = sum(1 for s in specs(a.root) if not feature_dir(a.root, s)) <= 1
     for issue in walk_md(a.root):
         if "issues" not in issue.relative_to(a.root).parts:
             continue
         if (own not in issue.parents) if own else any(d in issue.parents for d in others):
             continue
-        m = re.search(r"^\**Implements\**:\s*(.+)$", read(issue), re.M)
+        text = read(issue)
+        # layout plano com mais de uma spec dividindo docs/issues/: a issue que declara outra spec não entra;
+        # a que não declara nenhuma cobre os REQs que existem nesta spec, sem acusar os demais
+        rel = re.search(r"^\*\*Spec relacionada\*\*:\s*`([^`]+)`", text, re.M)
+        declared = a.root / rel.group(1).strip() if rel else None
+        declared = declared.resolve() if declared and declared.is_file() else None
+        if declared and declared != spec.resolve():
+            continue
+        m = re.search(r"^\**Implements\**:\s*(.+)$", text, re.M)
         for r in re.findall(r"REQ-\d+", m.group(1) if m else ""):
-            implemented.setdefault(r, []).append(issue.name)
+            if declared or own or single or r in reqs:
+                implemented.setdefault(r, []).append(issue.name)
     missing = sorted(reqs - set(implemented), key=lambda r: int(r[4:]))
     unknown = sorted(set(implemented) - reqs, key=lambda r: int(r[4:]))
     print(f"{len(reqs) - len(missing)}/{len(reqs)} REQs com issue")

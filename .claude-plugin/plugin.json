@@ -1,6 +1,6 @@
 {
   "name": "project-maker",
-  "version": "3.5.0",
+  "version": "3.5.1",
   "description": "Workflow Spec-Driven Development para Claude Code: spec, sprints, execução com implementer e validator separados, UAT, gate de segurança, PR e autopilot.",
   "author": {
     "name": "Renato de Paula Cardoso",

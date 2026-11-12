@@ -5,7 +5,7 @@ metadata:
   author: Renato de Paula Cardoso <renato@renatodpaula.com.br>
   homepage: https://github.com/renatodpaula/project-maker
   instagram: https://instagram.com/renatodpaula.ai
-  version: 3.5.0
+  version: 3.5.1
 description: |
   Workflow Spec-Driven Development para criar projetos ou adicionar features com IA de forma estruturada:
   brief, spec com requisitos verificáveis, sprints e issues, execução com implementer e validator separados,
